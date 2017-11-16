@@ -5,6 +5,7 @@ import os.path
 import subprocess
 import re
 import gzip
+import datetime
 
 os.chdir(argv[1])
 MIN_TEST_CASES = 8
@@ -57,16 +58,25 @@ def check_folder():
 
 
 def test_metadata(key_file_path, test_file_path):
+    numColumnErrors = 0
+    noCommas = True
     numRows = 1
     testNumber = 0
+    tests = []
+    passedTests = []
     samples = set()
+    Pass = True
+    
     outString = "### \"" + test_file_path + \
         "\" Test Cases (from rows in test file). . .\n\n"
-    Pass = True
+
+    keyFile = open(key_file_path, 'r')
+    keyFile.readline()
+    for line in keyFile:
+        testNumber += 1
+        tests.append(line.rstrip('\n'))
     with gzip.open(test_file_path, 'r') as testFile:
-        rows = []
         variables = {}
-        keyFile = open(key_file_path, 'r')
         testHeaderData = testFile.readline().decode().rstrip('\n').split('\t')
         if len(testHeaderData) is not 3:
             Pass = False
@@ -78,11 +88,17 @@ def test_metadata(key_file_path, test_file_path):
                 Pass = False
             else:
                 outString += CHECK_MARK + '\tFirst column of file is titled \"Sample\"\n\n'
-            keyFile.readline()
             for line in testFile:
                 numRows += 1
+                if "," in line.decode():
+                    noCommas = False
                 data = line.decode().rstrip('\n').split('\t')
-                rows.append(line.decode().rstrip('\n'))
+                if len(data) != 3 and numColumnErrors < 10:
+                    numColumnErrors += 1
+                    outString += RED_X + '\tRow ' + str(numRows) + ' of ' + test_file_path + ' must contain exactly 3 columns\n\n'
+                row = line.decode().rstrip('\n')
+                if row in tests:
+                    passedTests.append(tests.index(row))
                 samples.add(data[0])
                 if data[1] not in variables.keys():
                     variables[data[1]] = [data[2]]
@@ -91,7 +107,7 @@ def test_metadata(key_file_path, test_file_path):
                         variables[data[1]].append(data[2])
             for variable in variables.keys():
                 if len(variables[variable]) == 1:
-                    outString += RED_X + '\tAll values for variable \"' + str(variable) + '\" are the same(\"' + str(
+                    outString += RED_X + '\tThe value for variable \"' + str(variable) + '\" for all samples is the same (\"' + str(
                         variables[variable][0]) + '\").\n\n'
                     Pass = False
                 elif len(variables[variable]) == 0:
@@ -99,22 +115,20 @@ def test_metadata(key_file_path, test_file_path):
                         str(variable) + '\" are empty.\n\n'
                     Pass = False
             del variables
-            for line in keyFile:
-                testNumber += 1
-                if line.rstrip('\n') not in rows:
-                    outString += RED_X + '\tRow ' + str(testNumber) + ': Fail\n- \"' + line.rstrip(
-                        '\n') + '\" is not found.\n\n'
-                    Pass = False
+            for i in range(testNumber):
+                if i in passedTests:
+                    outString += CHECK_MARK + '\tRow ' + str(i + 1) + ': Success\n\n'
                 else:
-                    outString += CHECK_MARK + '\tRow ' + \
-                        str(testNumber) + ': Success\n\n'
-        if Pass:
-            outString += "#### Results: PASS\n---\n"
-            print('\t\tPASS', flush=True)
-        else:
-            outString += "#### Results: **<font color=\"red\">FAIL</font>**\n---\n"
-            print('\t\tFAIL', flush=True)
-        return [outString, Pass, len(testHeaderData), numRows, samples]
+                    Pass = False
+                    outString += RED_X + '\tRow ' + str(i + 1) + ': Fail\n- \"' + tests[i] + '\" is not found.\n\n'
+    testFile.close()
+    if Pass:
+        outString += "#### Results: PASS\n---\n"
+        print('\t\tPASS', flush=True)
+    else:
+        outString += "#### Results: **<font color=\"red\">FAIL</font>**\n---\n"
+        print('\t\tFAIL', flush=True)
+    return [outString, Pass, len(testHeaderData), numRows, samples, noCommas]
 
 
 def is_list_unique(test_list):
@@ -236,19 +250,31 @@ def test_key_files(file_list, min_test_cases, min_features, one_feature):
 
 
 def test_data(key_file_name, test_file_path):
+    noCommas = True
     numRows = 1  # 1 to account for Column Header Row
     testNumber = 0
     Pass = True
     passedTestCases = True
-    outString = '### \"' + test_file_path + \
-        '\" Test Cases (from rows in test file). . .\n\n'
-    testFileDict = {}
+    outString = '### \"' + test_file_path + '\" Test Cases (from rows in test file). . .\n\n'
+    keyFileDict = {}
     samples = set()
-    # print('\t1. Opening file...', flush=True)
+    testedRows = []
+    columnHeaders = []
+    keySamples = []
+    results = {}
+
     with gzip.open(test_file_path, 'r') as testFile:
         keyFile = open(key_file_name, 'r')
-        # print('\t2. Testing header...', flush=True)
         testHeaderData = testFile.readline().decode().rstrip('\n').split('\t')
+        for column in testHeaderData:
+            if column not in columnHeaders:
+                columnHeaders.append(column)
+            else:
+                Pass = False
+                outString += RED_X + '\t' + column + ' is in ' + TEST_DATA_NAME + ' column headers more than once\n\n'
+                outString += '#### Results: **<font color=\"red\">FAIL</font>**\n---'
+                print('\t\tFAIL', flush=True)
+                return [outString, Pass, numColumns, numRows, samples]
         if testHeaderData[0] != "Sample":
             outString += RED_X + '\tFirst column of file must be titled \"Sample\"\n\n'
             passedTestCases = False
@@ -256,63 +282,63 @@ def test_data(key_file_name, test_file_path):
             outString += CHECK_MARK + '\tFirst column of file is titled \"Sample\"\n\n'
         keyFile.readline().rstrip('\n').split('\t')
         numColumns = len(testHeaderData)
-        # print('\t3. Load into dictionary... ', flush=True)
-        for line in testFile:
-            testData = line.decode().rstrip('\n').split('\t')
-            testFileDict[testData[0]] = testData
-            numRows += 1
-            samples.add(testData[0])
-        testFile.close()
-        # print('\t\t3-Success', flush=True)
         for line in keyFile:
             testNumber += 1
-            fail = True
             keyData = line.rstrip('\n').split('\t')
-            sample = keyData[0]
-            variable = keyData[1]
-            value = keyData[2]
-            if value == "\"\"":
-                value = ""
-            compareString = '||\tSample\t|\tColumn\t|\tRow\t|\n|\t---\t|\t---\t|\t---\t|\t---\t|\n|\t**Expected**\t' \
-                            '|\t{0}\t|\t{1}\t|\t{2}\t|\n'.format(sample, variable, value)
-            # Testing first column
-            # print('\t4. Testing first column...', flush=True)
-            if sample not in testFileDict.keys():
-                failString = '- \"' + sample + '\" is not found in sample column.'
-                # Testing if second column is in Header
-                # print('\t5. Testing second column...', flush=True)
+            keySamples.append(keyData[0])
+            keyData.append(str(testNumber))
+            if len(keyData) != 4:
+                outString += RED_X + '\tRow ' + str(testNumber) + ' of \"' + key_file_name + '\" does not contain 3 columns\n\n'
+                Pass = False
             else:
-                failString = '- \"' + variable + '\" is not found in Headers'
-                for key in testFileDict.keys():
-                    if sample in key:
-                        for i in range(len(testHeaderData)):
-                            # Testing if values match
-                            # print('\t6. Testing third column...', flush=True)
-                            if variable == testHeaderData[i] and value == testFileDict[key][i]:
-                                fail = False
-                            elif variable == testHeaderData[i] and value != testFileDict[key][i]:
-                                fail = True
-                                failString = '\n' + compareString + '|\t**User Generated**\t|\t' + key + '\t|\t' + \
-                                             testHeaderData[i] + '\t|\t' + \
-                                    testFileDict[key][i] + '\t|\n'
-            # print('\t7. Complete', flush=True)
-            if fail:
-                outString += RED_X + '\tRow ' + \
-                    str(testNumber) + ': Fail\n' + failString + '\n\n'
-                passedTestCases = False
-            else:
-                outString = outString + CHECK_MARK + \
-                    '\tRow ' + str(testNumber) + ': Success\n\n'
-        if passedTestCases:
-            outString = outString + '#### Results: PASS\n---'
+                if keyData[0] in keyFileDict.keys():
+                    keyFileDict[keyData[0]].extend([keyData])
+                else:
+                    keyFileDict.setdefault(keyData[0], []).extend([keyData])
+        keyFile.close()
+        for line in testFile:
+            numRows += 1
+            if "," in line.decode():
+                noCommas = False
+            testData = line.decode().rstrip('\n').split('\t')
+            samples.add(testData[0])
+            if testData[0] in keyFileDict.keys():
+                for list_ in keyFileDict[testData[0]]:
+                    row = list_[3]
+                    testedRows.append(row)
+                    if list_[1] in testHeaderData:
+                        variableIndex = testHeaderData.index(list_[1])
+                        if list_[2] == testData[variableIndex]:
+                            results[int(row)] = CHECK_MARK + '\tRow ' + row + ': Success\n\n'
+                            # outString += CHECK_MARK + '\tRow ' + row + ': Success\n\n'
+                        else:
+                            Pass = False
+                            failString = RED_X + '\tRow: ' + row + ' - FAIL\n\n'
+                            failString += '||\tSample\t|\tColumn\t|\tRow\t|\n|\t---\t|\t---\t|\t---\t|\t---\t|\n|\t**Expected**\t' \
+                                '|\t{0}\t|\t{1}\t|\t{2}\t|\n'.format(testData[0], list_[1], list_[2])
+                            failString += '|\t**User Generated**\t|\t{0}\t|\t{1}\t|\t{2}\t|\n\n'.format(testData[0], list_[1], testData[variableIndex])
+                            results[int(row)] = failString
+                    else:
+                        results[int(row)] = RED_X + '\tRow: ' + row + ' - ' + list_[1] + ' is not found in \"' + TEST_DATA_NAME + '\" column headers\n\n'
+                        # outString += RED_X + '\tRow: ' + row + ' - ' + list_[1] + ' is not found in \"' + TEST_DATA_NAME + '\" column headers\n\n'
+                        Pass = False
+        testFile.close()
+        if len(testedRows) != testNumber:
+            Pass = False
+            for i in range(testNumber):
+                if str(i + 1) not in testedRows:
+                    results[i + 1] = RED_X + '\tRow: ' + str(i + 1) + ' - Sample \"' + keySamples[i] + '\" is not found in ' + TEST_DATA_NAME + '\n\n'
+                    # outString += RED_X + '\tRow: ' + str(i + 1) + ' - Sample \"' + keySamples[i] + '\" is not found in ' + TEST_DATA_NAME + '\n\n'
+        for i in range(len(results.keys())):
+            outString += results[i + 1]
+        if Pass:
+            outString += '#### Results: PASS\n---'
             print('\t\tPASS', flush=True)
         else:
             outString = outString + '#### Results: **<font color=\"red\">FAIL</font>**\n---'
             print('\t\tFAIL', flush=True)
             Pass = False
-    # testFile.close()
-    keyFile.close()
-    return [outString, Pass, numColumns, numRows, samples]
+    return [outString, Pass, numColumns, numRows, samples, noCommas]
 
 
 def files_exist(file_list):
@@ -420,17 +446,15 @@ def run_install(install_script_name):
     return [outString, Pass]
 
 
-def no_commas(file_list):
+def no_commas(data, meta_data):
     Pass = True
     outString = "### Making sure no commas exist in either file . . .\n\n"
-    for path in file_list:
-        with gzip.open(path, 'r') as file:
-            if "," in file.read().decode():
-                Pass = False
-                outString += RED_X + '\tComma(s) exist in ' + path + '\n\n'
-            else:
-                outString += CHECK_MARK + '\tNo Commas in ' + path + '\n\n'
-        file.close()
+    if not data:
+        Pass = False
+        outString += RED_X + '\tComma(s) exist in \"' + TEST_DATA_NAME + '\"\n\n'
+    if not meta_data:
+        Pass = False
+        outString += RED_X + '\tComma(s) exist in \"' + TEST_META_DATA_NAME + '\"\n\n'
     if Pass:
         outString += "#### Results: PASS\n---\n"
         print('\t\tPASS', flush=True)
@@ -443,16 +467,24 @@ def no_commas(file_list):
 def compare_samples(data_samples, meta_data_samples):
     Pass = True
     outString = '### Comparing samples in both files . . .\n\n'
+    numErrors = 0
     for item in data_samples:
         if item not in meta_data_samples:
-            outString += RED_X + '\t Sample \"' + item + '\" is in \"' + TEST_DATA_NAME + '\" but not in \"' + \
-                TEST_META_DATA_NAME + '\"\n\n'
-            Pass = False
+            numErrors += 1
+            if numErrors < 10:
+                Pass = False
+                outString += RED_X + '\t Sample \"' + item + '\" is in \"' + TEST_DATA_NAME + '\" but not in \"' + \
+                    TEST_META_DATA_NAME + '\"\n\n'
     for item in meta_data_samples:
         if item not in data_samples:
-            outString += RED_X + '\t Sample \"' + item + '\" is in \"' + TEST_META_DATA_NAME + '\" but not in \"' + \
-                TEST_DATA_NAME + '\"\n\n'
-            Pass = False
+            numErrors += 1
+            if numErrors < 10:
+                Pass = False
+                outString += RED_X + '\t Sample \"' + item + '\" is in \"' + TEST_META_DATA_NAME + '\" but not in \"' + \
+                    TEST_DATA_NAME + '\"\n\n'
+    if numErrors >= 10:
+        outString += RED_X + '\t More errors are not being printed...\n\n'
+        outString += '<font color=\"red\">Total sample mismatch errors: ' + numErrors + '</font>\n\n'
     if not Pass:
         outString += '#### Results: **<font color=\"red\">FAIL</font>**\n\n---\n'
         print('\t\tFAIL', flush=True)
@@ -465,12 +497,13 @@ def compare_samples(data_samples, meta_data_samples):
 
 
 statusFile = open("/app/StatusReports/" + STATUS_FILE_NAME, 'w')
+# statusFile = open(STATUS_FILE_NAME, 'w')
 complete = True
 # Title Status.md
 statusFile.write("<h1><center>" + argv[2] + "</center></h1>\n\n")
 
 # Check directory
-print('\tTestingDirectory...', flush=True)
+print('\tTesting Directory(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
 originalDirectory = os.listdir(argv[1])
 checkFolderResults = check_folder()
 statusFile.write(checkFolderResults[0])
@@ -478,40 +511,40 @@ if not checkFolderResults[1]:
     complete = False
 
 # Test Description
-print('\tTesting Description File...', flush=True)
+print('\tTesting Description File(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
 descriptionResults = test_description(DESCRIPTION_FILE_NAME)
 statusFile.write(descriptionResults[0])
 if not descriptionResults[1]:
     complete = False
 
 # Run install script
-print('\tRunning Install...', flush=True)
+print('\tRunning Install(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
 installScript = run_install(INSTALL_FILE_NAME)
 statusFile.write(installScript[0])
 if not installScript[1]:
     complete = False
 else:
     # Making sure path exists
-    print('\tTesting file paths...', flush=True)
+    print('\tTesting file paths(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
     filesExist = files_exist(REQUIRED_FILES)
     statusFile.write(filesExist[0])
     if filesExist[1] and complete:
         statusFile.write('*Running user code . . .*\n\n')
 
         # Run User-generated scripts
-        print('\tExecuting ' + DOWNLOAD_FILE_NAME + '...', flush=True)
+        print('\tExecuting ' + DOWNLOAD_FILE_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
         downloadScript = test_bash_script(DOWNLOAD_FILE_NAME)
         statusFile.write(downloadScript[0])
         if not downloadScript[1]:
             complete = False
         else:
-            print('\tExecuting ' + PARSE_FILE_NAME + '...', flush=True)
+            print('\tExecuting ' + PARSE_FILE_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
             parseScript = test_bash_script(PARSE_FILE_NAME)
             statusFile.write(parseScript[0])
             if not parseScript[1]:
                 complete = False
             else:
-                print('\tTesting output file types (gzip)...', flush=True)
+                print('\tTesting output file types (gzip)(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
                 zipResults = check_zip([TEST_DATA_NAME, TEST_META_DATA_NAME])
                 statusFile.write(zipResults[0])
                 if zipResults[1]:
@@ -520,7 +553,7 @@ else:
                 # Make Sure key files have enough Test cases and test the required minimum of features
                 # First, however, check to see if metadata file has more than one feature
                 print('\tTesting ' + KEY_DATA_NAME + ' & ' +
-                      KEY_META_DATA_NAME + '...', flush=True)
+                      KEY_META_DATA_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
                 keyFileResults = test_key_files([KEY_DATA_NAME, KEY_META_DATA_NAME], MIN_TEST_CASES, MIN_FEATURES,
                                                 has_one_feature(TEST_META_DATA_NAME))
                 statusFile.write(keyFileResults[0])
@@ -528,7 +561,7 @@ else:
                     complete = False
 
                 # DATA FILE
-                print('\tTesting ' + TEST_DATA_NAME + '...', flush=True)
+                print('\tTesting ' + TEST_DATA_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
                 testDataResults = test_data(KEY_DATA_NAME, TEST_DATA_NAME)
                 statusFile.write(create_md_table(
                     NUM_SAMPLE_COLUMNS, NUM_SAMPLE_ROWS, TEST_DATA_NAME))
@@ -539,7 +572,7 @@ else:
                     complete = False
 
                 # METADATA FILE
-                print('\tTesting ' + TEST_META_DATA_NAME + '...', flush=True)
+                print('\tTesting ' + TEST_META_DATA_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
                 metaDataResults = test_metadata(
                     KEY_META_DATA_NAME, TEST_META_DATA_NAME)
                 statusFile.write(create_md_table(
@@ -551,16 +584,15 @@ else:
                     complete = False
 
                 # Test for commas in files
-                print('\tTesting for no commas in either file...', flush=True)
-                commaResults = no_commas([TEST_META_DATA_NAME, TEST_DATA_NAME])
+                print('\tTesting for no commas in either file(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+                commaResults = no_commas(testDataResults[5], metaDataResults[5])
                 statusFile.write(commaResults[0])
                 if not commaResults[1]:
                     complete = False
 
                 # Compare Samples in metaData and DATA
-                print('\tTesting that samples are the same in both files...', flush=True)
-                sampleResults = compare_samples(
-                    testDataResults[4], metaDataResults[4])
+                print('\tTesting that samples are the same in both files(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+                sampleResults = compare_samples(testDataResults[4], metaDataResults[4])
                 statusFile.write(sampleResults[0])
                 if not sampleResults[1]:
                     complete = False
@@ -571,7 +603,7 @@ else:
                     os.system('cp metadata.tsv.gz ../')
 
                 # CLEANUP
-                print('\tTesting cleanup...', flush=True)
+                print('\tTesting cleanup(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
                 os.system('chmod +x ./' + CLEANUP_FILE_NAME)
                 os.system('./' + CLEANUP_FILE_NAME)
                 cleanupResults = test_cleanup(originalDirectory)
@@ -583,9 +615,11 @@ else:
 statusFile.close()
 # Write Status Result to top of Status File
 with open('/app/StatusReports/' + STATUS_FILE_NAME, 'r') as statusFileOriginal:
+    # with open(STATUS_FILE_NAME, 'r') as statusFileOriginal:
     header = statusFileOriginal.readline().rstrip('\n')
     statusContents = statusFileOriginal.read()
 with open('/app/StatusReports/' + STATUS_FILE_NAME, 'w') as statusComplete:
+    # with open(STATUS_FILE_NAME, 'w') as statusComplete:
     statusComplete.write(header + '\n')
     if complete:
         statusComplete.write(
