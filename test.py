@@ -6,6 +6,7 @@ import subprocess
 import re
 import gzip
 import datetime
+import yaml
 
 os.chdir(argv[1])
 MIN_TEST_CASES = 8
@@ -25,7 +26,9 @@ INSTALL_FILE_NAME = 'install.sh'
 PARSE_FILE_NAME = 'parse.sh'
 CLEANUP_FILE_NAME = 'cleanup.sh'
 DESCRIPTION_FILE_NAME = 'description.md'
-REQUIRED_FILES = [KEY_DATA_NAME, KEY_META_DATA_NAME, DOWNLOAD_FILE_NAME, INSTALL_FILE_NAME, PARSE_FILE_NAME, CLEANUP_FILE_NAME, DESCRIPTION_FILE_NAME]
+CONFIG_FILE_NAME = 'config.yml'
+REQUIRED_FILES = [KEY_DATA_NAME, KEY_META_DATA_NAME, DOWNLOAD_FILE_NAME, INSTALL_FILE_NAME, PARSE_FILE_NAME, CLEANUP_FILE_NAME, DESCRIPTION_FILE_NAME, CONFIG_FILE_NAME]
+REQUIRED_CONFIGS = ['title', 'featureDescription', 'featureDescriptionPlural']
 
 
 def check_folder():
@@ -66,7 +69,6 @@ def test_metadata(key_file_path, test_file_path):
     passedTests = []
     samples = set()
     Pass = True
-    
     outString = "### \"" + test_file_path + \
         "\" Test Cases (from rows in test file). . .\n\n"
 
@@ -342,6 +344,9 @@ def test_data(key_file_name, test_file_path):
 
 
 def files_exist(file_list):
+    '''
+    description of files_exist
+    '''
     Pass = True
     outString = '\n### Testing file paths:\n\n'
     for path in file_list:
@@ -376,29 +381,34 @@ def test_cleanup(original_directory):
     return [outString, Pass]
 
 
-def test_description(description_file_name):
+def test_config(config_file_name, description_file_name):
     Pass = True
-    outString = '### Testing Description File . . .\n\n'
+    outString = '### Testing Configuration File . . .\n\n'
+    if os.path.exists(config_file_name):
+        with open(config_file_name, 'r') as stream:
+            configs = yaml.load(stream)
+            for config in REQUIRED_CONFIGS:
+                if config not in configs.keys():
+                    Pass = False
+                    outString += RED_X + '\t' + config_file_name + ' does not contain a configuration for \"' + config + '\".\n\n'
+            if Pass:
+                outString += CHECK_MARK + '\t' + config_file_name + ' contains all necessary configurations.\n\n'
+            if 'title' in configs:
+                if len(configs['title']) > MAX_TITLE_SIZE:
+                    Pass = False
+                    outString += RED_X + '\tDataset Title cannot exceed ' + str(MAX_TITLE_SIZE) + ' characters.\n\n'
+                else:
+                    outString += CHECK_MARK + '\tTitle is less than ' + str(MAX_TITLE_SIZE) + ' characters\n\n'      
+    else:
+        outString += RED_X + '\t ' + config_file_name + ' does not exist\n\n'
+        Pass = False
     if os.path.exists(description_file_name):
-        description_file = open(description_file_name, 'r')
-        title = description_file.readline().rstrip('\n')
-        # ID = description_file.readline().rstrip('\n').split()
-        if "## " not in title:
-            outString += RED_X + \
-                '\tFirst line in description file should contain \"## <name of data set>\"\n\n'
-            Pass = False
-        # if len(ID) > 2 or ID[0] != "##":
-        #    outString += redX + '\tSecond line in description file should contain \"## <data-set-ID>\". ' \
-        #                       'The data set ID shouldn\'t contain any spaces.\n\n'
-        #    Pass = False
-        description_file.close()
-        if len(title) > MAX_TITLE_SIZE + 3:
-            Pass = False
-            outString += RED_X + '\tTitle in ' + description_file_name + ' should not be longer than ' + \
-                str(MAX_TITLE_SIZE) + ' characters\n\n'
-        else:
-            outString += CHECK_MARK + '\tTitle is less than ' + \
-                str(MAX_TITLE_SIZE) + ' characters\n\n'
+        with open(description_file_name, 'r') as description_file:
+            if len(description_file.read()) < 10:
+                Pass = False
+                outString += RED_X + '\t' + description_file_name + ' must contain a description of the dataset.\n\n'
+            else:
+                outString += CHECK_MARK + '\t' + description_file + ' contains a description.\n\n'
     else:
         outString += RED_X + '\t ' + description_file_name + ' does not exist\n\n'
         Pass = False
@@ -511,8 +521,8 @@ if not checkFolderResults[1]:
     complete = False
 
 # Test Description
-print('\tTesting Description File(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
-descriptionResults = test_description(DESCRIPTION_FILE_NAME)
+print('\tTesting Configuration and Description Files(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+descriptionResults = test_config(DESCRIPTION_FILE_NAME)
 statusFile.write(descriptionResults[0])
 if not descriptionResults[1]:
     complete = False
