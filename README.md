@@ -3,7 +3,7 @@ Continuous Integration Pipeline which tests and deploys pull requests to [*WishB
 
 ## Purpose
 
-*WishBuilder* is an open source project that provides biology-related datasets to *Geney*, a service that makes the data easily to filter and query for research. *WishBuilder* allows users to submit code which gathers and reformats data pulled from public Web servers into a consistent format described on the project [wiki](srp33.github.io/WishBuilder/).
+*WishBuilder* is an open source project that provides biology-related datasets to *Geney*, a service that makes the data easily to filter and query for research. *WishBuilder* allows users to submit code which gathers and reformats data pulled from public Web servers into a consistent format described on the project [wiki](https://srp33.github.io/WishBuilder/).
 
 *WishBuilderCI* (Continuous Integration) manages the pull requests submitted to *WishBuilder* by detecting them automatically, testing that the ouput data is consistent with the *WishBuilder* requirements, and adding the datasets created by the code contained in each passed dataset to *Geney*.
 
