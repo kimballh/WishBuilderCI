@@ -16,6 +16,7 @@ NUM_SAMPLE_ROWS = 5
 NUM_SAMPLE_COLUMNS = 5
 CHECK_MARK = '&#9989;'
 RED_X = '&#10060;'
+WARNING_SYMBOL = "&#9888;"
 KEY_DATA_NAME = 'test_data.tsv'
 KEY_META_DATA_NAME = 'test_metadata.tsv'
 TEST_DATA_NAME = 'data.tsv.gz'
@@ -26,7 +27,7 @@ INSTALL_FILE_NAME = 'install.sh'
 PARSE_FILE_NAME = 'parse.sh'
 CLEANUP_FILE_NAME = 'cleanup.sh'
 DESCRIPTION_FILE_NAME = 'description.md'
-CONFIG_FILE_NAME = 'config.yml'
+CONFIG_FILE_NAME = 'config.yaml'
 REQUIRED_FILES = [KEY_DATA_NAME, KEY_META_DATA_NAME, DOWNLOAD_FILE_NAME, INSTALL_FILE_NAME, PARSE_FILE_NAME, CLEANUP_FILE_NAME, DESCRIPTION_FILE_NAME, CONFIG_FILE_NAME]
 REQUIRED_CONFIGS = ['title', 'featureDescription', 'featureDescriptionPlural']
 
@@ -69,6 +70,7 @@ def test_metadata(key_file_path, test_file_path):
     passedTests = []
     samples = set()
     Pass = True
+    badVariables = []
     outString = "### \"" + test_file_path + \
         "\" Test Cases (from rows in test file). . .\n\n"
 
@@ -109,13 +111,15 @@ def test_metadata(key_file_path, test_file_path):
                         variables[data[1]].append(data[2])
             for variable in variables.keys():
                 if len(variables[variable]) == 1:
-                    outString += RED_X + '\tThe value for variable \"' + str(variable) + '\" for all samples is the same (\"' + str(
-                        variables[variable][0]) + '\").\n\n'
-                    Pass = False
+                    badVariables.append(variable)
+                    outString += WARNING_SYMBOL + '\tThe value for variable \"' + str(variable) + '\" for all samples is the same (\"' + str(
+                        variables[variable][0]) + '\"). This variable has been removed from ' + test_file_path + '\n\n'
+                    # Pass = False
                 elif len(variables[variable]) == 0:
-                    outString += RED_X + '\tAll values for variable \"' + \
-                        str(variable) + '\" are empty.\n\n'
-                    Pass = False
+                    badVariables.append(variable)
+                    outString += WARNING_SYMBOL + '\tAll values for variable \"' + \
+                        str(variable) + '\" are empty. This variable has been removed from ' + test_file_path + '\n\n'
+                    # Pass = False
             del variables
             for i in range(testNumber):
                 if i in passedTests:
@@ -130,7 +134,7 @@ def test_metadata(key_file_path, test_file_path):
     else:
         outString += "#### Results: **<font color=\"red\">FAIL</font>**\n---\n"
         print('\t\tFAIL', flush=True)
-    return [outString, Pass, len(testHeaderData), numRows, samples, noCommas]
+    return [outString, Pass, len(testHeaderData), numRows, samples, noCommas, badVariables]
 
 
 def is_list_unique(test_list):
@@ -408,7 +412,7 @@ def test_config(config_file_name, description_file_name):
                 Pass = False
                 outString += RED_X + '\t' + description_file_name + ' must contain a description of the dataset.\n\n'
             else:
-                outString += CHECK_MARK + '\t' + description_file + ' contains a description.\n\n'
+                outString += CHECK_MARK + '\t' + description_file_name + ' contains a description.\n\n'
     else:
         outString += RED_X + '\t ' + description_file_name + ' does not exist\n\n'
         Pass = False
@@ -506,6 +510,16 @@ def compare_samples(data_samples, meta_data_samples):
     return [outString, Pass]
 
 
+def remove_variables(file_name, variable_list):
+    with gzip.open(file_name, 'r') as oldFile:
+        with gzip.open('tempfile.tsv.gz', 'w') as newFile:
+            for line in oldFile:
+                data = line.decode().rstrip('\n').split('\t')
+                if data[1] not in variable_list:
+                    newFile.write(line)
+    os.system('mv tempfile.tsv.gz ' + file_name)
+
+
 statusFile = open("/app/StatusReports/" + STATUS_FILE_NAME, 'w')
 # statusFile = open(STATUS_FILE_NAME, 'w')
 complete = True
@@ -522,7 +536,7 @@ if not checkFolderResults[1]:
 
 # Test Description
 print('\tTesting Configuration and Description Files(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
-descriptionResults = test_config(DESCRIPTION_FILE_NAME)
+descriptionResults = test_config(CONFIG_FILE_NAME, DESCRIPTION_FILE_NAME)
 statusFile.write(descriptionResults[0])
 if not descriptionResults[1]:
     complete = False
@@ -592,6 +606,9 @@ else:
                 statusFile.write(metaDataResults[0])
                 if not metaDataResults[1]:
                     complete = False
+                
+                print('\tRemoving bad variables from metadata.tsv.gz')
+                remove_variables(TEST_DATA_NAME, metaDataResults[6])
 
                 # Test for commas in files
                 print('\tTesting for no commas in either file(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
