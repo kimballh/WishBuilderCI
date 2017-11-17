@@ -5,6 +5,7 @@ git pull -q origin gh-pages
 cd ..
 cd ../WishBuilder/
 git pull -q origin master
+git remote update origin --prune
 cd ..
 LINES_BEFORE="$(wc -l .prhistory)"
 docker run -v $(pwd):/app --rm wishbuilder

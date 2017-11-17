@@ -93,7 +93,7 @@ def test_pr(index):
     dataSets.close()
 
 
-payload = requests.get('https://api.github.com/repos/srp33/WishBuilder/pulls?page=2')
+payload = requests.get('https://api.github.com/repos/srp33/WishBuilder/pulls')
 pr = payload.json()
 newPRs = True
 

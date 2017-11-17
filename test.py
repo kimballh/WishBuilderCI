@@ -16,7 +16,7 @@ NUM_SAMPLE_ROWS = 5
 NUM_SAMPLE_COLUMNS = 5
 CHECK_MARK = '&#9989;'
 RED_X = '&#10060;'
-WARNING_SYMBOL = "&#9888;"
+WARNING_SYMBOL = "<p><font color=\"orange\" size=\"+2\">&#9888;\t</font>"
 KEY_DATA_NAME = 'test_data.tsv'
 KEY_META_DATA_NAME = 'test_metadata.tsv'
 TEST_DATA_NAME = 'data.tsv.gz'
@@ -112,13 +112,13 @@ def test_metadata(key_file_path, test_file_path):
             for variable in variables.keys():
                 if len(variables[variable]) == 1:
                     badVariables.append(variable)
-                    outString += WARNING_SYMBOL + '\tThe value for variable \"' + str(variable) + '\" for all samples is the same (\"' + str(
-                        variables[variable][0]) + '\"). This variable has been removed from ' + test_file_path + '\n\n'
+                    outString += WARNING_SYMBOL + 'The value for variable \"' + str(variable) + '\" for all samples is the same (\"' + str(
+                        variables[variable][0]) + '\"). This variable has been removed from ' + test_file_path + '</p>\n\n'
                     # Pass = False
                 elif len(variables[variable]) == 0:
                     badVariables.append(variable)
-                    outString += WARNING_SYMBOL + '\tAll values for variable \"' + \
-                        str(variable) + '\" are empty. This variable has been removed from ' + test_file_path + '\n\n'
+                    outString += WARNING_SYMBOL + 'All values for variable \"' + \
+                        str(variable) + '\" are empty. This variable has been removed from ' + test_file_path + '</p>\n\n'
                     # Pass = False
             del variables
             for i in range(testNumber):
@@ -465,16 +465,16 @@ def no_commas(data, meta_data):
     outString = "### Making sure no commas exist in either file . . .\n\n"
     if not data:
         Pass = False
-        outString += RED_X + '\tComma(s) exist in \"' + TEST_DATA_NAME + '\"\n\n'
+        outString += WARNING_SYMBOL + 'Comma(s) exist in \"' + TEST_DATA_NAME + '\". This may create an issue if exported in .csv format.</p>\n\n'
     if not meta_data:
         Pass = False
-        outString += RED_X + '\tComma(s) exist in \"' + TEST_META_DATA_NAME + '\"\n\n'
+        outString += WARNING_SYMBOL + 'Comma(s) exist in \"' + TEST_META_DATA_NAME + '\". This may create an issue if exported in .csv format.</p>\n\n'
     if Pass:
         outString += "#### Results: PASS\n---\n"
         print('\t\tPASS', flush=True)
     else:
-        outString += "#### Results: **<font color=\"red\">FAIL</font>**\n---\n"
-        print('\t\tFAIL', flush=True)
+        outString += "#### Results: **<font color=\"orange\">WARNED</font>**\n---\n"
+        print('\t\tWARNED', flush=True)
     return [outString, Pass]
 
 
@@ -607,15 +607,14 @@ else:
                 if not metaDataResults[1]:
                     complete = False
                 
-                print('\tRemoving bad variables from metadata.tsv.gz')
-                remove_variables(TEST_DATA_NAME, metaDataResults[6])
+                
 
                 # Test for commas in files
                 print('\tTesting for no commas in either file(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
                 commaResults = no_commas(testDataResults[5], metaDataResults[5])
                 statusFile.write(commaResults[0])
-                if not commaResults[1]:
-                    complete = False
+                # if not commaResults[1]:
+                    # complete = False
 
                 # Compare Samples in metaData and DATA
                 print('\tTesting that samples are the same in both files(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
@@ -626,6 +625,9 @@ else:
 
                 # Move output files
                 if complete:
+                    if len(metaDataResults[6]) > 0:
+                        print('\tRemoving bad variables from metadata.tsv.gz')
+                        remove_variables(TEST_META_DATA_NAME, metaDataResults[6])
                     os.system('cp data.tsv.gz ../')
                     os.system('cp metadata.tsv.gz ../')
 
