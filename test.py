@@ -258,6 +258,7 @@ def test_key_files(file_list, min_test_cases, min_features, one_feature):
 def test_data(key_file_name, test_file_path):
     noCommas = True
     numRows = 1  # 1 to account for Column Header Row
+    numColumns = 0
     testNumber = 0
     Pass = True
     passedTestCases = True
