@@ -216,13 +216,17 @@ def test_key_files(file_list, min_test_cases, min_features, one_feature):
         samples = {}
         keyFile.readline()
         for line in keyFile:
-            data = line.rstrip('\n').split('\t')
-            if data[0] not in samples.keys():
-                samples[data[0]] = [data[1]]
-            else:
-                if data[1] not in samples[data[0]]:
-                    samples[data[0]].append(data[1])
             numTests += 1
+            data = line.rstrip('\n').split('\t')
+            if len(data) is not 3:
+                fail = True
+                outString += RED_X + '\tRow ' + str(numTests) + ' of ' + path + ' should contain exactly three columns.\n\n'
+            else:
+                if data[0] not in samples.keys():
+                    samples[data[0]] = [data[1]]
+                else:
+                    if data[1] not in samples[data[0]]:
+                        samples[data[0]].append(data[1])
         keyFile.close()
         if len(samples.keys()) < minSamples:
             outString += RED_X + '\t' + path + ' does not contain enough unique samples to test (min: ' + str(
@@ -499,7 +503,7 @@ def compare_samples(data_samples, meta_data_samples):
                     TEST_DATA_NAME + '\"\n\n'
     if numErrors >= 10:
         outString += RED_X + '\t More errors are not being printed...\n\n'
-        outString += '<font color=\"red\">Total sample mismatch errors: ' + numErrors + '</font>\n\n'
+        outString += '<font color=\"red\">Total sample mismatch errors: ' + str(numErrors) + '</font>\n\n'
     if not Pass:
         outString += '#### Results: **<font color=\"red\">FAIL</font>**\n\n---\n'
         print('\t\tFAIL', flush=True)

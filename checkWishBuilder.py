@@ -75,6 +75,7 @@ def test_pr(index):
             'mv metadata.tsv.gz ../CompleteDataSets/' + branchName + '/')
         os.system(
             'mv ./testDirectory/description.md ../CompleteDataSets/' + branchName + '/')
+        os.system('mv ./testDirectory/config.yaml ../CompleteDataSets/' + branchName + '/')
         os.system('sudo chmod -R 777 ../CompleteDataSets/' + branchName)
     os.system('rm -rf test*')
     subprocess.run(["git", "checkout", "-f", "master"],
@@ -92,12 +93,9 @@ def test_pr(index):
                    '-status)\t|\tno\t|\n')
     dataSets.close()
 
-
-payload = requests.get('https://api.github.com/repos/srp33/WishBuilder/pulls')
+payload = requests.get('https://api.github.com/repos/srp33/WishBuilder/pulls?page=2')
 pr = payload.json()
 newPRs = True
-
-
 while newPRs:
     history = check_history('.prhistory')
     if history[0]:
