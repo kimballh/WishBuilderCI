@@ -77,6 +77,19 @@ def test_pr(index):
             'mv ./testDirectory/description.md ../CompleteDataSets/' + branchName + '/')
         os.system('mv ./testDirectory/config.yaml ../CompleteDataSets/' + branchName + '/')
         os.system('sudo chmod -R 777 ../CompleteDataSets/' + branchName)
+    else:
+        print('Moving data.tsv.gz, metadata.tsv.gz, and description.md to IncompleteDataSets/' + branchName,
+              flush=True)
+        os.system('mkdir ../IncompleteDataSets/' + branchName)
+        if 'data.tsv.gz' in os.listdir():
+            os.system('mv data.tsv.gz ../IncompleteDataSets/' + branchName + '/')
+        if 'metadata.tsv.gz' in os.listdir():
+            os.system('mv metadata.tsv.gz ../IncompleteDataSets/' + branchName + '/')
+        if 'description.md' in os.listdir('./testDirectory'):
+            os.system('mv ./testDirectory/description.md ../IncompleteDataSets/' + branchName + '/')
+        if 'config.yaml' in os.listdir('./testDirectory'):
+            os.system('mv ./testDirectory/config.yaml ../IncompleteDataSets/' + branchName + '/')
+        os.system('sudo chmod -R 777 ../IncompleteDataSets/' + branchName)
     os.system('rm -rf test*')
     subprocess.run(["git", "checkout", "-f", "master"],
                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)

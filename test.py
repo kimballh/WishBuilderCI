@@ -218,10 +218,10 @@ def test_key_files(file_list, min_test_cases, min_features, one_feature):
         for line in keyFile:
             numTests += 1
             data = line.rstrip('\n').split('\t')
-            if len(data) is not 3:
+            if len(data) is not 3 and len(data) is not 0:
                 fail = True
-                outString += RED_X + '\tRow ' + str(numTests) + ' of ' + path + ' should contain exactly three columns.\n\n'
-            else:
+                outString += RED_X + '\tRow ' + str(numTests) + ' of \"' + path + '\" should contain exactly three columns.\n\n'
+            elif len(data) is not 0:
                 if data[0] not in samples.keys():
                     samples[data[0]] = [data[1]]
                 else:
@@ -334,7 +334,7 @@ def test_data(key_file_name, test_file_path):
                         # outString += RED_X + '\tRow: ' + row + ' - ' + list_[1] + ' is not found in \"' + TEST_DATA_NAME + '\" column headers\n\n'
                         Pass = False
         testFile.close()
-        if len(testedRows) != testNumber:
+        if len(testedRows) < testNumber:
             Pass = False
             for i in range(testNumber):
                 if str(i + 1) not in testedRows:
@@ -467,7 +467,7 @@ def run_install(install_script_name):
 
 def no_commas(data, meta_data):
     Pass = True
-    outString = "### Making sure no commas exist in either file . . .\n\n"
+    outString = "### Checking Files for commas . . .\n\n"
     if not data:
         Pass = False
         outString += WARNING_SYMBOL + 'Comma(s) exist in \"' + TEST_DATA_NAME + '\". This may create an issue if exported in .csv format.</p>\n\n'
@@ -583,8 +583,7 @@ else:
                 # First, however, check to see if metadata file has more than one feature
                 print('\tTesting ' + KEY_DATA_NAME + ' & ' +
                       KEY_META_DATA_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
-                keyFileResults = test_key_files([KEY_DATA_NAME, KEY_META_DATA_NAME], MIN_TEST_CASES, MIN_FEATURES,
-                                                has_one_feature(TEST_META_DATA_NAME))
+                keyFileResults = test_key_files([KEY_DATA_NAME, KEY_META_DATA_NAME], MIN_TEST_CASES, MIN_FEATURES, has_one_feature(TEST_META_DATA_NAME))
                 statusFile.write(keyFileResults[0])
                 if keyFileResults[1]:
                     complete = False
@@ -629,12 +628,12 @@ else:
                     complete = False
 
                 # Move output files
-                if complete:
-                    if len(metaDataResults[6]) > 0:
-                        print('\tRemoving bad variables from metadata.tsv.gz')
-                        remove_variables(TEST_META_DATA_NAME, metaDataResults[6])
-                    os.system('cp data.tsv.gz ../')
-                    os.system('cp metadata.tsv.gz ../')
+                # if complete:
+                if len(metaDataResults[6]) > 0:
+                    print('\tRemoving bad variables from metadata.tsv.gz')
+                    remove_variables(TEST_META_DATA_NAME, metaDataResults[6])
+                os.system('cp data.tsv.gz ../')
+                os.system('cp metadata.tsv.gz ../')
 
                 # CLEANUP
                 print('\tTesting cleanup(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
