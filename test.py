@@ -120,6 +120,7 @@ def test_metadata(key_file_path, test_file_path):
                     outString += WARNING_SYMBOL + 'All values for variable \"' + \
                         str(variable) + '\" are empty. This variable has been removed from ' + test_file_path + '</p>\n\n'
                     # Pass = False
+            numVariables = len(variables.keys()) - len(badVariables)
             del variables
             for i in range(testNumber):
                 if i in passedTests:
@@ -134,7 +135,7 @@ def test_metadata(key_file_path, test_file_path):
     else:
         outString += "#### Results: **<font color=\"red\">FAIL</font>**\n---\n"
         print('\t\tFAIL', flush=True)
-    return [outString, Pass, len(testHeaderData), numRows, samples, noCommas, badVariables]
+    return [outString, Pass, len(testHeaderData), numRows, samples, numVariables, badVariables]
 
 
 def is_list_unique(test_list):
@@ -349,7 +350,7 @@ def test_data(key_file_name, test_file_path):
             outString = outString + '#### Results: **<font color=\"red\">FAIL</font>**\n---'
             print('\t\tFAIL', flush=True)
             Pass = False
-    return [outString, Pass, numColumns, numRows, samples, noCommas]
+    return [outString, Pass, numColumns, numRows, samples, numColumns - 1]
 
 
 def files_exist(file_list):
@@ -610,15 +611,6 @@ else:
                 statusFile.write(metaDataResults[0])
                 if not metaDataResults[1]:
                     complete = False
-                
-                
-
-                # Test for commas in files
-                print('\tTesting for no commas in either file(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
-                commaResults = no_commas(testDataResults[5], metaDataResults[5])
-                statusFile.write(commaResults[0])
-                # if not commaResults[1]:
-                    # complete = False
 
                 # Compare Samples in metaData and DATA
                 print('\tTesting that samples are the same in both files(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
@@ -643,6 +635,10 @@ else:
                 statusFile.write(cleanupResults[0])
                 if not cleanupResults[1]:
                     complete = False
+
+                # add to config.yaml
+                with open(CONFIG_FILE_NAME, 'a') as configFile:
+                    configFile.write('numSamples: {0}\nmetaVariables: {1}\nfeatureVariables: {2}'.format(len(testDataResults[4]), metaDataResults[5], testDataResults[5]))
     else:
         complete = False
 statusFile.close()
