@@ -8,7 +8,7 @@ git pull -q origin master
 git remote update origin --prune
 cd ..
 LINES_BEFORE="$(wc -l .prhistory)"
-docker run -v $(pwd):/app --rm wishbuilder
+docker run -v $(pwd):/app --rm kimballer/wishbuilder
 LINES_AFTER="$(wc -l .prhistory)"
 if [ "${LINES_BEFORE}" = "${LINES_AFTER}" ]; then
     echo No new Pull Requests
