@@ -620,7 +620,6 @@ else:
                     complete = False
 
                 # Move output files
-                # if complete:
                 if len(metaDataResults[6]) > 0:
                     print('\tRemoving bad variables from metadata.tsv.gz')
                     remove_variables(TEST_META_DATA_NAME, metaDataResults[6])

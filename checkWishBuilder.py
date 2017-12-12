@@ -43,6 +43,12 @@ def check_history(file_name):
     return[False, -1]
 
 
+def convertForGeney(src_directory, output_directory):
+    print('Converting dataset to Geney format...', flush=True)
+    os.system('python3 ../GeneyTypeConverter/type_converter.py ' + src_directory + ' ' + output_directory)
+    os.system('chmod 777 ' + output_directory)
+
+
 def test_pr(index):
     start = time.time()
     status = ""
@@ -98,6 +104,7 @@ def test_pr(index):
         os.system(
             'mv ./testDirectory/config.yaml ../CompleteDataSets/' + branchName + '/')
         os.system('sudo chmod -R 777 ../CompleteDataSets/' + branchName)
+        convertForGeney('/app/CompleteDataSets/' + branchName, '/app/GeneyDataSets/' + branchName)
     else:
         print('Moving data.tsv.gz, metadata.tsv.gz, and description.md to IncompleteDataSets/' + branchName,
               flush=True)

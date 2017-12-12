@@ -11,7 +11,7 @@ LINES_BEFORE="$(wc -l .prhistory)"
 docker run -v $(pwd):/app --rm kimballer/wishbuilder
 LINES_AFTER="$(wc -l .prhistory)"
 if [ "${LINES_BEFORE}" = "${LINES_AFTER}" ]; then
-    echo No new Pull Requests
+    echo No new pull requests
 else
     echo Pushing test results to gitHub
     cd ./gh-pages/WishBuilder
