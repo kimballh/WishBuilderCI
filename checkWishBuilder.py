@@ -7,6 +7,16 @@ import yaml
 from sys import argv
 
 
+def update_branches():
+    print("Updating WishBuilder Repository...", flush=True)
+    os.chdir('/app/gh-pages/WishBuilder')
+    os.system('git pull -q origin gh-pages')
+    os.chdir('/app/WishBuilder')
+    os.system('git pull -q origin master')
+    os.system('git remote update origin --prune')
+    os.chdir('/app')
+
+
 def git_push(message, branch):
     os.system('git pull origin ' + branch)
     os.system('git add --all')
@@ -47,6 +57,15 @@ def convertForGeney(src_directory, output_directory):
     print('Converting dataset to Geney format...', flush=True)
     os.system('python3 ../GeneyTypeConverter/type_converter.py ' + src_directory + ' ' + output_directory)
     os.system('chmod 777 ' + output_directory)
+
+
+def update_website():
+    print('Pushing test resutls to gitHub', flush=True)
+    os.chdir('/app/gh-pages/WishBuilder')
+    os.system('git add --all')
+    os.system('git commit -q -m \"added data sets\"')
+    os.system('git push -q origin gh-pages')
+    os.chdir('/app')
 
 
 def test_pr(index):
@@ -140,13 +159,22 @@ def test_pr(index):
         branchName, user, status, dateFinished, timeElapsed, numSamples, metaVariables, featureVariables))
     dataSets.close()
 
-
-payload = requests.get('https://api.github.com/repos/srp33/WishBuilder/pulls?page=2')
+print("Welcome To Wishbuilder!\n", flush=True)
+update_branches()
+payload = requests.get('https://api.github.com/repos/srp33/WishBuilder/pulls')
 pr = payload.json()
 newPRs = True
+updateNeeded = False
+
 while newPRs:
     history = check_history('.prhistory')
     if history[0]:
+        updateNeeded = True
         test_pr(history[1])
     else:
         newPRs = False
+
+if updateNeeded:
+    update_website()
+else:
+    print('No new pull requests', flush=True)
