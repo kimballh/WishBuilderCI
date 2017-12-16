@@ -81,12 +81,15 @@ def check_history(file_name):
     pulls = []
     with open(file_name) as fp:
         prHistory = json.load(fp)
-    for pull in prHistory.keys():
-        pulls.append(pull)
+        history = prHistory
     with open(file_name, 'w') as fp:
         json.dump(prHistory, fp, sort_keys=True, indent=4)
+    for pull in history.keys():
+        pulls.append(pull)
     for i in range(len(pr)):
         if str(pr[i]['number']) not in pulls:
+            return [True, i]
+        elif (str(pr[i]['number']) in pulls) and (pr[i]['head']['sha'] != history[str(pr[i]['number'])]['sha']):
             return [True, i]
     return[False, -1]
 
@@ -116,6 +119,7 @@ def update_history(i, passed=False, time_elapsed='N/A', num_samples=0, meta_vari
         'prID': pr[i]['id'],
         'prNum': pr[i]['number'],
         'user': pr[i]['user']['login'],
+        'sha': pr[i]['head']['sha'],
         'passed': passed,
         'date': time.strftime("%D", time.gmtime(time.time())),
         'eDate': time.time(),
@@ -226,7 +230,7 @@ def test_pr(index):
               '-description.md ./gh-pages/WishBuilder/Descriptions/')
     update_pages(branchName)
 
-print("Welcome To Wishbuilder!", flush=True)
+
 # update_branches()
 payload = requests.get('https://api.github.com/repos/srp33/WishBuilder/pulls')
 pr = payload.json()
@@ -243,5 +247,3 @@ while newPRs:
 
 if updateNeeded:
     update_website()
-else:
-    print('No new pull requests\n', flush=True)
