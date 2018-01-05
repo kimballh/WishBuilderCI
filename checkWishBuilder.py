@@ -39,6 +39,8 @@ def update_pages(branch_name):
             index = pulls[i][1]
             if prHistory[index]['passed']:
                 stat = "Complete"
+            elif prHistory[index]['timeElapsed'] is 'N/A':
+                stat = "In Progress"
             else:
                 stat = "Failed"
             dataSets.write('|\t[{0}]({{{{site.url}}}}/Descriptions/{0}-description)\t|\t{1}\t|\t[{2}]({{{{site.url}}}}/StatusReports/{0}-status)\t|\t{3}\t|\t{4}\t|\t{5}\t|\t{6}\t|\t{7}\t|\n'.format(
@@ -78,6 +80,7 @@ def merge_branch(branch_name):
 
 
 def check_history(file_name):
+    currentJobs = os.listdir('app/')
     pulls = []
     with open(file_name) as fp:
         prHistory = json.load(fp)
@@ -89,7 +92,7 @@ def check_history(file_name):
     for i in range(len(pr)):
         if str(pr[i]['number']) not in pulls:
             return [True, i]
-        elif (str(pr[i]['number']) in pulls) and (pr[i]['head']['sha'] != history[str(pr[i]['number'])]['sha']):
+        elif (str(pr[i]['number']) in pulls) and (pr[i]['head']['sha'] != history[str(pr[i]['number'])]['sha']) and (pr[i]['head']['ref'] not in currentJobs):
             return [True, i]
     return[False, -1]
 
