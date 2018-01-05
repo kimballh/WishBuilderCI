@@ -80,7 +80,7 @@ def merge_branch(branch_name):
 
 
 def check_history(file_name):
-    currentJobs = os.listdir('app/')
+    currentJobs = os.listdir('/app')
     pulls = []
     with open(file_name) as fp:
         prHistory = json.load(fp)
