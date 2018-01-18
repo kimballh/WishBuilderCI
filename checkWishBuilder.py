@@ -6,6 +6,7 @@ import time
 import yaml
 import json
 from sys import argv
+from private import GH_TOKEN
 
 WB_URL = "git@github.com:srp33/WishBuilder.git"
 
@@ -68,15 +69,27 @@ def check_status(file_path):
         return "In Progress"
 
 
-def merge_branch(branch_name):
-    cwd = os.getcwd()
-    os.chdir('/app/WishBuilder')
-    os.system('git checkout -q master')
-    os.system('git pull -q origin master')
-    os.system('git merge -q -m \"Passed Tests\" origin/' + branch_name)
-    os.system('git push -q origin master')
-    os.system('git push -q origin --delete ' + branch_name)
-    os.chdir(cwd)
+# def merge_branch(branch_name):
+#     cwd = os.getcwd()
+#     os.chdir('/app/WishBuilder')
+#     os.system('git checkout -q master')
+#     os.system('git pull -q origin master')
+#     os.system('git remote update origin --prune')
+#     os.system('git merge -q -m \"Passed Tests\" origin/' + branch_name)
+#     os.system('git push -q origin master')
+#     os.system('git push -q origin --delete ' + branch_name)
+#     os.chdir(cwd)
+
+
+def merge_branch(index):
+    pr_number = str(pr[index]['number'])
+    branch_name = pr[index]['head']['ref']
+    payload = {'sha': pr[index]['head']['sha']}
+    response = requests.put('https://api.github.com/repos/srp33/WishBuilder/pulls/' + pr_number + '/merge?access_token=' + GH_TOKEN, json=payload)
+    if 'Pull Request successfully merged' in response.json()['message']:
+        print('Pull Request #' + pr_number + ', Branch \"' + branch_name + '\", has been merged to WishBuilder Master branch', flush=True)
+    else:
+        print('Pull Request #' + pr_number + ', Branch \"' + branch_name + '\", could not be merged to WishBuilder Master branch', flush=True)
 
 
 def check_history(file_name):
@@ -97,9 +110,12 @@ def check_history(file_name):
     return[False, -1]
 
 
-def convertForGeney(src_directory, output_directory):
+def convertForGeney(src_directory, output_directory, simple=False):
     print('Converting dataset to Geney format...', flush=True)
-    os.system('python3 /app/GeneyTypeConverter/type_converter.py ' + src_directory + ' ' + output_directory)
+    if simple:
+        os.system('python3 /app/GeneyTypeConverter/type_converter.py -s ' + src_directory + ' ' + output_directory)
+    else:
+        os.system('python3 /app/GeneyTypeConverter/type_converter.py ' + src_directory + ' ' + output_directory)
     os.system('chmod 777 ' + output_directory)
     os.system('tar -czf ' + output_directory + '.tar.gz ' + output_directory)
     os.system('chmod 777 ' + output_directory + '.tar.gz')
@@ -135,7 +151,32 @@ def update_history(i, passed=False, time_elapsed='N/A', num_samples=0, meta_vari
         json.dump(prHistory, fp, sort_keys=True, indent=4)
 
 
+def only_description(branch_name):
+    descriptionFiles = ['description.md', 'config.yaml']
+    originalDirPath = '/app/' + branch_name + '/original/'
+    newDirPath = '/app/' + branch_name + '/WishBuilder/' + branch_name + '/'
+    originalDir = os.listdir(originalDirPath)
+    newDir = os.listdir(newDirPath)
+    filesChanged = []
+    if len(originalDir) != len(newDir):
+        return False
+    else:
+        for file in newDir:
+            if file not in originalDir:
+                return False
+    for file in newDir:
+        contentsNew = open(newDirPath + file).read()
+        contentsOld = open(originalDirPath + file).read()
+        if contentsNew != contentsOld:
+            filesChanged.append(file)
+    for file in filesChanged:
+        if file not in descriptionFiles:
+            return False
+    return True
+
+
 def test_pr(index):
+    Pass = False
     update_history(index)
     branchName = pr[index]['head']['ref']
     start = time.time()
@@ -144,94 +185,91 @@ def test_pr(index):
     os.chdir(branchName)
     os.system('git clone ' + WB_URL)
     os.chdir('./WishBuilder')
-    print('Pull Request #' +
-          str(pr[index]['number']) + ' Branch: ' + branchName, flush=True)
+    print('Pull Request #' + str(pr[index]['number']) + ' Branch: ' + branchName, flush=True)
     user = pr[index]['user']['login']
     print('Checking out branch . . .', flush=True)
-    subprocess.run(["git", "checkout", "remotes/origin/" + branchName], stdout=subprocess.PIPE,
-                   stderr=subprocess.PIPE)
-    os.system('cp /app/test.py ./')
-    os.system('cp -r ' + branchName + ' ./testDirectory')
-    print('Testing ' + branchName +
-          '(test.py \"./WishBuilder/' + branchName + '/\"):', flush=True)
-    os.system(
-        'python3 ./test.py \"/app/' + branchName + '/WishBuilder/testDirectory/\" ' + branchName)
-    status = check_status("/app/StatusReports/" +
-                          branchName + "-status.md")
-    os.system('cp testDirectory/description.md /app/Descriptions/' +
-              branchName + '-description.md')
-    
-    if 'config.yaml' in os.listdir('./testDirectory'):
-        configFile = open('./testDirectory/config.yaml', 'r')
-        configs = yaml.load(configFile)
-        if 'numSamples' in configs.keys():
-            numSamples = configs['numSamples']
+    os.system('cp -r ' + branchName + ' ../original')
+    subprocess.run(["git", "checkout", "remotes/origin/" + branchName], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Check if only description or yaml was edited
+    if only_description(branchName):
+        Pass = True
+        print('Only description.md and/or config was edited, no test needed', flush=True)
+        os.system('mv ./' + branchName + '/config.yaml /app/CompleteDataSets/' + branchName + '/')
+        os.system('mv ./' + branchName + '/description.md /app/CompleteDataSets/' + branchName + '/')
+        convertForGeney('/app/CompleteDataSets/' + branchName, '/app/GeneyDataSets/' + branchName, simple=True)
+    else:
+        os.system('cp /app/test.py ./')
+        os.system('cp -r ' + branchName + ' ./testDirectory')
+        print('Testing ' + branchName + '(test.py \"./WishBuilder/' + branchName + '/\"):', flush=True)
+        os.system('python3 ./test.py \"/app/' + branchName + '/WishBuilder/testDirectory/\" ' + branchName)
+        status = check_status("/app/StatusReports/" + branchName + "-status.md")
+        os.system('cp testDirectory/description.md /app/Descriptions/' + branchName + '-description.md')
+
+        if 'config.yaml' in os.listdir('./testDirectory'):
+            configFile = open('./testDirectory/config.yaml', 'r')
+            configs = yaml.load(configFile)
+            if 'numSamples' in configs.keys():
+                numSamples = configs['numSamples']
+            else:
+                numSamples = 0
+            if 'metaVariables' in configs.keys():
+                metaVariables = configs['metaVariables']
+            else:
+                metaVariables = 0
+            if 'featureVariables' in configs.keys():
+                featureVariables = configs['featureVariables']
+            else:
+                featureVariables = 0
+            configFile.close()
         else:
             numSamples = 0
-        if 'metaVariables' in configs.keys():
-            metaVariables = configs['metaVariables']
-        else:
             metaVariables = 0
-        if 'featureVariables' in configs.keys():
-            featureVariables = configs['featureVariables']
-        else:
             featureVariables = 0
-        configFile.close()
-    else:
-        numSamples = 0
-        metaVariables = 0
-        featureVariables = 0
-    if status == "Complete":
-        Pass = True
-        print('Moving data.tsv.gz, metadata.tsv.gz, and description.md to CompleteDataSets/' + branchName,
-              flush=True)
-        os.system('mkdir /app/CompleteDataSets/' + branchName)
-        os.system('mv data.tsv.gz /app/CompleteDataSets/' +
-                  branchName + '/')
-        os.system(
-            'mv metadata.tsv.gz /app/CompleteDataSets/' + branchName + '/')
-        os.system(
-            'mv ./testDirectory/description.md /app/CompleteDataSets/' + branchName + '/')
-        os.system(
-            'mv ./testDirectory/config.yaml /app/CompleteDataSets/' + branchName + '/')
-        os.system('sudo chmod -R 777 /app/CompleteDataSets/' + branchName)
-        convertForGeney('/app/CompleteDataSets/' + branchName, '/app/GeneyDataSets/' + branchName)
-    else:
-        Pass = False
-        print('Moving data.tsv.gz, metadata.tsv.gz, and description.md to IncompleteDataSets/' + branchName,
-              flush=True)
-        os.system('mkdir /app/IncompleteDataSets/' + branchName)
-        if 'data.tsv.gz' in os.listdir():
-            os.system('mv data.tsv.gz /app/IncompleteDataSets/' +
-                      branchName + '/')
-        if 'metadata.tsv.gz' in os.listdir():
-            os.system('mv metadata.tsv.gz /app/IncompleteDataSets/' +
-                      branchName + '/')
-        if 'description.md' in os.listdir('./testDirectory'):
+        if status == "Complete":
+            Pass = True
+            print('Moving data.tsv.gz, metadata.tsv.gz, and description.md to CompleteDataSets/' + branchName, flush=True)
+            os.system('mkdir /app/CompleteDataSets/' + branchName)
+            os.system('mv data.tsv.gz /app/CompleteDataSets/' + branchName + '/')
             os.system(
-                'mv ./testDirectory/description.md /app/IncompleteDataSets/' + branchName + '/')
-        if 'config.yaml' in os.listdir('./testDirectory'):
+                'mv metadata.tsv.gz /app/CompleteDataSets/' + branchName + '/')
             os.system(
-                'mv ./testDirectory/config.yaml /app/IncompleteDataSets/' + branchName + '/')
-        os.system('sudo chmod -R 777 /app/IncompleteDataSets/' + branchName)
-    os.system('rm -rf test*')
-    subprocess.run(["git", "checkout", "-f", "master"],
-                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    timeElapsed = time.strftime(
-        "%Hh:%Mm:%Ss", time.gmtime(time.time() - start))
-    dateFinished = time.strftime("%D", time.gmtime(time.time()))
-    update_history(index, Pass, timeElapsed, numSamples, metaVariables, featureVariables)
-    print('Finished with branch \"%s\". Time elapsed: %s\n' %
-          (branchName, timeElapsed), flush=True)
+                'mv ./testDirectory/description.md /app/CompleteDataSets/' + branchName + '/')
+            os.system(
+                'mv ./testDirectory/config.yaml /app/CompleteDataSets/' + branchName + '/')
+            os.system('sudo chmod -R 777 /app/CompleteDataSets/' + branchName)
+            convertForGeney('/app/CompleteDataSets/' + branchName, '/app/GeneyDataSets/' + branchName)
+        else:
+            Pass = False
+            # print('Moving data.tsv.gz, metadata.tsv.gz, and description.md to IncompleteDataSets/' + branchName,
+            #       flush=True)
+            # os.system('mkdir /app/IncompleteDataSets/' + branchName)
+            # if 'data.tsv.gz' in os.listdir():
+            #     os.system('mv data.tsv.gz /app/IncompleteDataSets/' +
+            #               branchName + '/')
+            # if 'metadata.tsv.gz' in os.listdir():
+            #     os.system('mv metadata.tsv.gz /app/IncompleteDataSets/' +
+            #               branchName + '/')
+            # if 'description.md' in os.listdir('./testDirectory'):
+            #     os.system(
+            #         'mv ./testDirectory/description.md /app/IncompleteDataSets/' + branchName + '/')
+            # if 'config.yaml' in os.listdir('./testDirectory'):
+            #     os.system(
+            #         'mv ./testDirectory/config.yaml /app/IncompleteDataSets/' + branchName + '/')
+            # os.system('sudo chmod -R 777 /app/IncompleteDataSets/' + branchName)
+        os.system('rm -rf test*')
+        subprocess.run(["git", "checkout", "-f", "master"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        timeElapsed = time.strftime("%Hh:%Mm:%Ss", time.gmtime(time.time() - start))
+        dateFinished = time.strftime("%D", time.gmtime(time.time()))
+        update_history(index, Pass, timeElapsed, numSamples, metaVariables, featureVariables)
+        print('Finished with branch \"%s\". Time elapsed: %s\n' % (branchName, timeElapsed), flush=True)
+        os.system('cp ./StatusReports/' + branchName + '-status.md ./gh-pages/WishBuilder/StatusReports/')
+        os.system('cp ./Descriptions/' + branchName + '-description.md ./gh-pages/WishBuilder/Descriptions/')
+        update_pages(branchName)
     os.chdir('/app')
     os.system('rm -rf ' + branchName)
-    if status == "Complete":
-        merge_branch(branchName)
-    os.system('cp ./StatusReports/' + branchName +
-              '-status.md ./gh-pages/WishBuilder/StatusReports/')
-    os.system('cp ./Descriptions/' + branchName +
-              '-description.md ./gh-pages/WishBuilder/Descriptions/')
-    update_pages(branchName)
+    if Pass:
+        merge_branch(index)
 
 
 # update_branches()
@@ -245,8 +283,11 @@ while newPRs:
     if history[0]:
         updateNeeded = True
         test_pr(history[1])
+        newPRs = False
     else:
         newPRs = False
 
 if updateNeeded:
     update_website()
+else:
+    print('No new pull requests')
