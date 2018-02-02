@@ -286,7 +286,7 @@ def test_data(key_file_name, test_file_path):
                 outString += RED_X + '\t' + column + ' is in ' + TEST_DATA_NAME + ' column headers more than once\n\n'
                 outString += '#### Results: **<font color=\"red\">FAIL</font>**\n---'
                 print('\t\tFAIL', flush=True)
-                return [outString, Pass, numColumns, numRows, samples]
+                return [outString, Pass, numColumns, numRows, samples, numColumns - 1]
         if testHeaderData[0] != "Sample":
             outString += RED_X + '\tFirst column of file must be titled \"Sample\"\n\n'
             passedTestCases = False
@@ -530,10 +530,12 @@ statusFile = open("/app/StatusReports/" + STATUS_FILE_NAME, 'w')
 # statusFile = open(STATUS_FILE_NAME, 'w')
 complete = True
 # Title Status.md
-statusFile.write("<h1><center>" + argv[2] + "</center></h1>\n\n")
+statusFile.write("<h1><center>" + argv[2] + "</center></h1>\n")
+statusFile.write("<h2><center> Status: In Progress </center></h2>\n\n")
 
 # Check directory
-print('\tTesting Directory(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+(datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p")
+print('\tTesting Directory(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
 originalDirectory = os.listdir(argv[1])
 checkFolderResults = check_folder()
 statusFile.write(checkFolderResults[0])
@@ -541,40 +543,41 @@ if not checkFolderResults[1]:
     complete = False
 
 # Test Description
-print('\tTesting Configuration and Description Files(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+print('\tTesting Configuration and Description Files(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
 descriptionResults = test_config(CONFIG_FILE_NAME, DESCRIPTION_FILE_NAME)
 statusFile.write(descriptionResults[0])
 if not descriptionResults[1]:
     complete = False
 
 # Run install script
-print('\tRunning Install(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+os.system("chmod +x *.sh")
+print('\tRunning Install(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
 installScript = run_install(INSTALL_FILE_NAME)
 statusFile.write(installScript[0])
 if not installScript[1]:
     complete = False
 else:
     # Making sure path exists
-    print('\tTesting file paths(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+    print('\tTesting file paths(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
     filesExist = files_exist(REQUIRED_FILES)
     statusFile.write(filesExist[0])
     if filesExist[1] and complete:
         statusFile.write('*Running user code . . .*\n\n')
 
         # Run User-generated scripts
-        print('\tExecuting ' + DOWNLOAD_FILE_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+        print('\tExecuting ' + DOWNLOAD_FILE_NAME + '(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
         downloadScript = test_bash_script(DOWNLOAD_FILE_NAME)
         statusFile.write(downloadScript[0])
         if not downloadScript[1]:
             complete = False
         else:
-            print('\tExecuting ' + PARSE_FILE_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+            print('\tExecuting ' + PARSE_FILE_NAME + '(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
             parseScript = test_bash_script(PARSE_FILE_NAME)
             statusFile.write(parseScript[0])
             if not parseScript[1]:
                 complete = False
             else:
-                print('\tTesting output file types (gzip)(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+                print('\tTesting output file types (gzip)(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
                 zipResults = check_zip([TEST_DATA_NAME, TEST_META_DATA_NAME])
                 statusFile.write(zipResults[0])
                 if zipResults[1]:
@@ -583,14 +586,14 @@ else:
                 # Make Sure key files have enough Test cases and test the required minimum of features
                 # First, however, check to see if metadata file has more than one feature
                 print('\tTesting ' + KEY_DATA_NAME + ' & ' +
-                      KEY_META_DATA_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+                      KEY_META_DATA_NAME + '(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
                 keyFileResults = test_key_files([KEY_DATA_NAME, KEY_META_DATA_NAME], MIN_TEST_CASES, MIN_FEATURES, has_one_feature(TEST_META_DATA_NAME))
                 statusFile.write(keyFileResults[0])
                 if keyFileResults[1]:
                     complete = False
 
                 # DATA FILE
-                print('\tTesting ' + TEST_DATA_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+                print('\tTesting ' + TEST_DATA_NAME + '(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
                 testDataResults = test_data(KEY_DATA_NAME, TEST_DATA_NAME)
                 statusFile.write(create_md_table(
                     NUM_SAMPLE_COLUMNS, NUM_SAMPLE_ROWS, TEST_DATA_NAME))
@@ -601,7 +604,7 @@ else:
                     complete = False
 
                 # METADATA FILE
-                print('\tTesting ' + TEST_META_DATA_NAME + '(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+                print('\tTesting ' + TEST_META_DATA_NAME + '(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
                 metaDataResults = test_metadata(
                     KEY_META_DATA_NAME, TEST_META_DATA_NAME)
                 statusFile.write(create_md_table(
@@ -613,7 +616,7 @@ else:
                     complete = False
 
                 # Compare Samples in metaData and DATA
-                print('\tTesting that samples are the same in both files(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+                print('\tTesting that samples are the same in both files(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
                 sampleResults = compare_samples(testDataResults[4], metaDataResults[4])
                 statusFile.write(sampleResults[0])
                 if not sampleResults[1]:
@@ -627,7 +630,7 @@ else:
                 os.system('cp metadata.tsv.gz ../')
 
                 # CLEANUP
-                print('\tTesting cleanup(' + str(datetime.datetime.now().time())[:-7] + ')...', flush=True)
+                print('\tTesting cleanup(' + (datetime.datetime.now() - datetime.timedelta(hours=7)).strftime("%H:%m%p") + ')...', flush=True)
                 os.system('chmod +x ./' + CLEANUP_FILE_NAME)
                 os.system('./' + CLEANUP_FILE_NAME)
                 cleanupResults = test_cleanup(originalDirectory)
@@ -645,18 +648,20 @@ statusFile.close()
 with open('/app/StatusReports/' + STATUS_FILE_NAME, 'r') as statusFileOriginal:
     # with open(STATUS_FILE_NAME, 'r') as statusFileOriginal:
     header = statusFileOriginal.readline().rstrip('\n')
+    statusFileOriginal.readline().rstrip('\n')
     statusContents = statusFileOriginal.read()
 with open('/app/StatusReports/' + STATUS_FILE_NAME, 'w') as statusComplete:
     # with open(STATUS_FILE_NAME, 'w') as statusComplete:
     statusComplete.write(header + '\n')
+    date = datetime.datetime.now() - datetime.timedelta(hours=7)
     if complete:
         statusComplete.write(
-            '<h2><center> Status: Complete </center></h2>\n\n' + statusContents)
+            '<h2><center> Status: Complete </center></h2>\n<center>' + date.strftime("%b %d, %y %H:%m%p MST") + '</center>\n\n' + statusContents)
         print('\tTesting Complete: Results = Pass', flush=True)
         sys.exit()
     else:
         statusComplete.write(
-            '<h2><center> Status: In Progress </center></h2>\n\n' + statusContents)
+            '<h2><center> Status: Failed </center></h2>\n<center>' + date.strftime("%b %d, %y %H:%m%p MST") + '</center>\n\n' + statusContents)
         print('\tTesting Complete: Results = Fail (See \"https://srp33.github.io/WishBuilder/StatusReports/' +
               argv[2] + '-status\" for details)', flush=True)
         sys.exit(1)
