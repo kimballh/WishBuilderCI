@@ -136,9 +136,9 @@ def update_history(i, passed=False, time_elapsed='In Progress', num_samples=0, m
     with open('/app/prHistory.json') as fp:
         prHistory = json.load(fp)
     if update:
-        prHistory[str(pr[i]['number'])].time_elapsed = 'N/A'
-        prHistory[str(pr[i]['number'])].branch = pr[i]['head']['ref'] + ' Update'
-        prHistory[str(pr[i]['number'])].passed = True
+        prHistory[str(pr[i]['number'])]['timeElapsed'] = 'N/A'
+        prHistory[str(pr[i]['number'])]['branch'] = pr[i]['head']['ref'] + ' Update'
+        prHistory[str(pr[i]['number'])]['passed'] = True
     else: 
         prHistory[str(pr[i]['number'])] = {
             'branch': pr[i]['head']['ref'],
