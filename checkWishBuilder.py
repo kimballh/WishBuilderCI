@@ -24,32 +24,30 @@ def update_branches():
 def update_pages(branch_name, fullUpdate=True):
     cwd = os.getcwd()
     os.chdir('/app/gh-pages/WishBuilder')
-    if fullUpdate:
-        with open("/app/gh-pages/WishBuilder/docs/dataSets.md", 'w') as dataSets:
-            dataSets.write("## WishBuilder Data Sets\n\n<div class=\"table-scroll\" markdown = \"block\">\n\n|\t" +
-                        "Data Set\t|\tUser\t|\tStatus\t|\tDate\t|\tTime Elapsed\t|\tSamples\t|\tMeta Data Variables" +
-                        "\t|\tFeature Variables\t|\n|\t----\t|\t----\t|\t----\t|\t----\t|\t----\t|\t----\t|\t----\t|" +
-                        "\t----\t|\n")
-            with open('/app/prHistory.json') as fp:
-                prHistory = json.load(fp)
-            pulls = []
-            for pull in prHistory:
-                pulls.append((prHistory[pull]['eDate'], pull))
-            pulls.sort(reverse=True)
-            for i in range(len(pulls)):
-                index = pulls[i][1]
-                if prHistory[index]['passed']:
-                    stat = "Complete"
-                elif prHistory[index]['timeElapsed'] == 'N/A':
-                    stat = "Updated"
-                elif prHistory[index]['timeElapsed'] == 'In Progress':
-                    stat = "In Progress"
-                else:
-                    stat = "Failed"
+    with open("/app/gh-pages/WishBuilder/docs/dataSets.md", 'w') as dataSets:
+        dataSets.write("## WishBuilder Data Sets\n\n<div class=\"table-scroll\" markdown = \"block\">\n\n|\t" +
+                    "Data Set\t|\tUser\t|\tStatus\t|\tDate\t|\tTime Elapsed\t|\tSamples\t|\tMeta Data Variables" +
+                    "\t|\tFeature Variables\t|\n|\t----\t|\t----\t|\t----\t|\t----\t|\t----\t|\t----\t|\t----\t|" +
+                    "\t----\t|\n")
+        with open('/app/prHistory.json') as fp:
+            prHistory = json.load(fp)
+        pulls = []
+        for pull in prHistory:
+            pulls.append((prHistory[pull]['eDate'], pull))
+        pulls.sort(reverse=True)
+        for i in range(len(pulls)):
+            index = pulls[i][1]
+            if prHistory[index]['passed']:
+                stat = "Complete"
+            elif prHistory[index]['timeElapsed'] == 'In Progress':
+                stat = "In Progress"
+            else:
+                stat = "Failed"
+            if prHistory[index]['timeElapsed'] != 'updated' and prHistory[index]['timeElapsed'] != 'update':
                 dataSets.write('|\t[{0}]({{{{site.url}}}}/Descriptions/{0}-description)\t|\t{1}\t|\t[{2}]({{{{site.url}}}}/StatusReports/{0}-status)\t|\t{3}\t|\t{4}\t|\t{5}\t|\t{6}\t|\t{7}\t|\n'.format(
                     prHistory[index]['branch'], prHistory[index]['user'], stat, prHistory[index]['date'], prHistory[index]['timeElapsed'], str(prHistory[index]['samples']), str(prHistory[index]['metaVariables']), str(prHistory[index]['featureVariables'])))
-        with open('/app/prHistory.json', 'w') as fp:
-            json.dump(prHistory, fp, sort_keys=True, indent=4)
+    with open('/app/prHistory.json', 'w') as fp:
+        json.dump(prHistory, fp, sort_keys=True, indent=4)
     os.system('git add --all')
     if fullUpdate:
         os.system('git commit -q -m \"added dataset ' + branch_name + '\"')
@@ -81,13 +79,13 @@ def merge_branch(index):
     response = requests.put('https://api.github.com/repos/srp33/WishBuilder/pulls/' + pr_number + '/merge?access_token=' + GH_TOKEN, json=payload)
     if 'Pull Request successfully merged' in response.json()['message']:
         print('Pull Request #' + pr_number + ', Branch \"' + branch_name + '\", has been merged to WishBuilder Master branch', flush=True)
-        cwd = os.getcwd()
-        os.chdir('/app/WishBuilder')
-        os.system('git checkout -q master')
-        os.system('git pull -q origin master')
-        os.system('git remote update origin --prune')
-        os.system('git push -q origin --delete ' + branch_name)
-        os.chdir(cwd)
+        # cwd = os.getcwd()
+        # os.chdir('/app/WishBuilder')
+        # os.system('git checkout -q master')
+        # os.system('git pull -q origin master')
+        # os.system('git remote update origin --prune')
+        # os.system('git push -q origin --delete ' + branch_name)
+        # os.chdir(cwd)
     else:
         print('Pull Request #' + pr_number + ', Branch \"' + branch_name + '\", could not be merged to WishBuilder Master branch', flush=True)
 
@@ -103,7 +101,7 @@ def check_history(file_name):
     for pull in history.keys():
         pulls.append(pull)
     for i in range(len(pr)):
-        # if pr[i]['head']['ref'] == 'ICGC_BRCA-US_exp_seq':
+        # if pr[i]['head']['ref'] == 'test_branch':
         #     return [True, i]
         if str(pr[i]['number']) not in pulls:
             return [True, i]
@@ -132,29 +130,44 @@ def update_website():
     os.chdir('/app')
 
 
-def update_history(i, passed=False, time_elapsed='In Progress', num_samples=0, meta_variables=0, feature_variables=0, update=False):
+def update_history(index, pr_number, passed=False, time_elapsed='In Progress', num_samples=0, meta_variables=0, feature_variables=0, update=False):
     with open('/app/prHistory.json') as fp:
         prHistory = json.load(fp)
+    prHistory[pr_number] = {
+        'branch': pr[index]['head']['ref'],
+        'prID': pr[index]['id'],
+        'prNum': pr[index]['number'],
+        'user': pr[index]['user']['login'],
+        'sha': pr[index]['head']['sha'],
+        'passed': passed,
+        'date': time.strftime("%D", time.gmtime(time.time())),
+        'eDate': time.time(),
+        'timeElapsed': time_elapsed,
+        'samples': num_samples,
+        'metaVariables': meta_variables,
+        'featureVariables': feature_variables
+    }
     if update:
-        prHistory[str(pr[i]['number'])]['timeElapsed'] = 'N/A'
-        prHistory[str(pr[i]['number'])]['branch'] = pr[i]['head']['ref'] + ' Update'
-        prHistory[str(pr[i]['number'])]['passed'] = True
-    else: 
-        prHistory[str(pr[i]['number'])] = {
-            'branch': pr[i]['head']['ref'],
-            'prID': pr[i]['id'],
-            'prNum': pr[i]['number'],
-            'user': pr[i]['user']['login'],
-            'sha': pr[i]['head']['sha'],
-            'passed': passed,
-            'date': time.strftime("%D", time.gmtime(time.time())),
-            'eDate': time.time(),
-            'timeElapsed': time_elapsed,
-            'samples': num_samples,
-            'metaVariables': meta_variables,
-            'featureVariables': feature_variables
-        }
-    
+        originalPR = "none"
+        for pull in prHistory.keys():
+            if prHistory[pull]['branch'] == prHistory[pr_number]['branch']:
+                originalPR = pull
+        if originalPR != "none":
+            prHistory[pr_number] = {
+                'branch': pr[index]['head']['ref'],
+                'prID': pr[index]['id'],
+                'prNum': pr[index]['number'],
+                'user': pr[index]['user']['login'],
+                'sha': pr[index]['head']['sha'],
+                'passed': True,
+                'date': time.strftime("%D", time.gmtime(time.time())),
+                'eDate': time.time(),
+                'timeElapsed': prHistory[originalPR]['timeElapsed'],
+                'samples': prHistory[originalPR]['samples'],
+                'metaVariables': prHistory[originalPR]['metaVariables'],
+                'featureVariables': prHistory[originalPR]['featureVariables']
+            }
+            prHistory[originalPR]['timeElapsed'] = 'updated'
     with open('/app/prHistory.json', 'w') as fp:
         json.dump(prHistory, fp, sort_keys=True, indent=4)
 
@@ -183,43 +196,65 @@ def only_description(branch_name):
     return True
 
 
+def valid_files(pr_number, branch_name):
+    commit = requests.get('https://api.github.com/repos/srp33/WishBuilder/pulls/' + pr_number + '/files').json()
+    files = []
+    badFiles = []
+    for i in range(len(commit)):
+        files.append(commit[i]['filename'])
+    for fileName in files:
+        if fileName.split("/")[0] != branch_name:
+            badFiles.append(fileName)
+    if len(badFiles) > 0:
+        with open("/app/gh-pages/WishBuilder/StatusReports/" + branch_name + "-status.md", "w") as status_file:
+            status_file.write("<h1><center>" + branch_name + "</center></h1>\n")
+            status_file.write("<h2><center> Status: Failed </center></h2>\n\n")
+            status_file.write("Only files in the \"" + branch_name + "\" directory should be changed. The following files were also changed in this branch:\n")
+            for file in badFiles:
+                status_file.write("- " + file + "\n")
+        status_file.close()
+        return 0
+    else:
+        for fileName in files:
+            if fileName != branch_name + "/description.md" and fileName != branch_name + "/config.yaml":
+                return 1
+    return 2
+
+
 def test_pr(index):
     fullTest = True
     Pass = False
-    update_history(index)
     branchName = pr[index]['head']['ref']
+    ssh_url = pr[index]['head']['repo']['ssh_url']
+    url = pr[index]['head']['repo']['url']
+    sha = pr[index]['head']['sha']
+    pullNumber = str(pr[index]['number'])
+    user = pr[index]['user']['login']
+    testType = valid_files(pullNumber, branchName)
     start = time.time()
     status = ""
+    if branchName in os.listdir():
+        os.system('rm -rf ' + branchName)
     os.mkdir(branchName)
     os.chdir(branchName)
-    os.system('git clone ' + WB_URL)
+    os.system('git clone ' + ssh_url)
     os.chdir('./WishBuilder')
     print('Pull Request #' + str(pr[index]['number']) + ' Branch: ' + branchName, flush=True)
-    user = pr[index]['user']['login']
     print('Checking out branch . . .', flush=True)
-    wbDirectory = os.listdir('/app/' + branchName + '/WishBuilder')
-    if branchName not in wbDirectory:
-        existingDataset = False
-    else:
-        existingDataset = True
-        os.system('cp -r ' + branchName + ' ../original')
     subprocess.run(["git", "checkout", "remotes/origin/" + branchName], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     # Check if only description or yaml was edited
-    if existingDataset:
-        if only_description(branchName):
-            fullTest = False
-    if not fullTest:
-        update_history(index, update=True)
+    if testType == 2:
+        update_history(index, pullNumber, update=True)
         Pass = True
         print('Only description.md and/or config was edited, no test needed', flush=True)
         os.system('mv ./' + branchName + '/config.yaml /app/CompleteDataSets/' + branchName + '/')
         os.system('mv ./' + branchName + '/description.md /app/CompleteDataSets/' + branchName + '/')
         os.system('cp /app/CompleteDataSets/' + branchName + '/description.md /app/gh-pages/WishBuilder/Descriptions/' + branchName + '-description.md')
         convertForGeney('/app/CompleteDataSets/' + branchName, '/app/GeneyDataSets/' + branchName, simple=True)
-        update_pages(branchName, fullUpdate=False)
         os.chdir('/app')
-    else:
+    elif testType == 1:
+        update_history(index, pullNumber)
         os.system('cp /app/test.py ./')
         os.system('cp -r ' + branchName + ' ./testDirectory')
         print('Testing ' + branchName + '(test.py \"./WishBuilder/' + branchName + '/\"):', flush=True)
@@ -282,13 +317,17 @@ def test_pr(index):
         subprocess.run(["git", "checkout", "-f", "master"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         timeElapsed = time.strftime("%Hh:%Mm:%Ss", time.gmtime(time.time() - start))
         dateFinished = time.strftime("%D", time.gmtime(time.time()))
-        update_history(index, Pass, timeElapsed, numSamples, metaVariables, featureVariables)
+        update_history(index, pullNumber, Pass, timeElapsed, numSamples, metaVariables, featureVariables)
         print('Finished with branch \"%s\". Time elapsed: %s\n' % (branchName, timeElapsed), flush=True)
         os.chdir('/app')
         os.system('cp ./StatusReports/' + branchName + '-status.md ./gh-pages/WishBuilder/StatusReports/')
         os.system('cp ./Descriptions/' + branchName + '-description.md ./gh-pages/WishBuilder/Descriptions/')
-        update_pages(branchName)
-    os.system('rm -rf ' + branchName)
+    elif testType == 0:
+        update_history(index, pullNumber, time_elapsed="N\A")
+        Pass = False
+        print('Invalid File Changes', flush=True)
+    update_pages(branchName)
+    os.system('rm -rf /app/' + branchName)
     if Pass:
         merge_branch(index)
 
@@ -303,6 +342,7 @@ while newPRs:
     if history[0]:
         updateNeeded = True
         test_pr(history[1])
+        # newPRs = False
     else:
         newPRs = False
 

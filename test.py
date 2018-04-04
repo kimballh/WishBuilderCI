@@ -11,7 +11,7 @@ import yaml
 os.chdir(argv[1])
 MIN_TEST_CASES = 8
 MIN_FEATURES = 2
-MAX_TITLE_SIZE = 100
+MAX_TITLE_SIZE = 300
 NUM_SAMPLE_ROWS = 5
 NUM_SAMPLE_COLUMNS = 5
 CHECK_MARK = '&#9989;'
@@ -97,9 +97,12 @@ def test_metadata(key_file_path, test_file_path):
                 if "," in line.decode():
                     noCommas = False
                 data = line.decode().rstrip('\n').split('\t')
-                if len(data) != 3 and numColumnErrors < 10:
+                if (len(data) != 3 or data[2] == "") and numColumnErrors < 10:
                     numColumnErrors += 1
-                    outString += RED_X + '\tRow ' + str(numRows) + ' of ' + test_file_path + ' must contain exactly 3 columns\n\n'
+                    if len(data) != 3:
+                        outString += RED_X + '\tRow ' + str(numRows) + ' of ' + test_file_path + ' must contain exactly 3 columns\n\n'
+                    if data[2] == "":
+                        outString += RED_X + '\tRow ' + str(numRows) + ' of ' + test_file_path + ' cannot contain an empty value.\n\n'
                 row = line.decode().rstrip('\n')
                 if row in tests:
                     passedTests.append(tests.index(row))
@@ -191,17 +194,20 @@ def check_zip(file_list):
 
 
 def has_one_feature(meta_data):
-    with gzip.open(meta_data, 'r') as metaDataFile:
-        samples = []
-        for i in range(3):
-            data = metaDataFile.readline().decode().rstrip('\n').split('\t')
-            if i != 0:
-                samples.append(data[0])
-        metaDataFile.close()
-    if samples[0] == samples[1]:
-        return False
+    if meta_data in os.listdir(os.getcwd()):
+        with gzip.open(meta_data, 'r') as metaDataFile:
+            samples = []
+            for i in range(3):
+                data = metaDataFile.readline().decode().rstrip('\n').split('\t')
+                if i != 0:
+                    samples.append(data[0])
+            metaDataFile.close()
+        if samples[0] == samples[1]:
+            return False
+        else:
+            return True
     else:
-        return True
+        return False
 
 
 def test_key_files(file_list, min_test_cases, min_features, one_feature):
@@ -224,10 +230,10 @@ def test_key_files(file_list, min_test_cases, min_features, one_feature):
                 outString += RED_X + '\tRow ' + str(numTests) + ' of \"' + path + '\" should contain exactly three columns.\n\n'
             elif len(data) is not 0:
                 if data[0] not in samples.keys():
-                    samples[data[0]] = [data[1]]
+                    samples[data[0]] = [data[1] + data[2]]
                 else:
-                    if data[1] not in samples[data[0]]:
-                        samples[data[0]].append(data[1])
+                    if data[1] + data[2] not in samples[data[0]]:
+                        samples[data[0]].append(data[1] + data[2])
         keyFile.close()
         if len(samples.keys()) < minSamples:
             outString += RED_X + '\t' + path + ' does not contain enough unique samples to test (min: ' + str(
@@ -408,7 +414,7 @@ def test_config(config_file_name, description_file_name):
                     Pass = False
                     outString += RED_X + '\tDataset Title cannot exceed ' + str(MAX_TITLE_SIZE) + ' characters.\n\n'
                 else:
-                    outString += CHECK_MARK + '\tTitle is less than ' + str(MAX_TITLE_SIZE) + ' characters\n\n'      
+                    outString += CHECK_MARK + '\tTitle is less than ' + str(MAX_TITLE_SIZE) + ' characters\n\n'
     else:
         outString += RED_X + '\t ' + config_file_name + ' does not exist\n\n'
         Pass = False
@@ -656,7 +662,7 @@ with open('/app/StatusReports/' + STATUS_FILE_NAME, 'w') as statusComplete:
     date = datetime.datetime.now() - datetime.timedelta(hours=7)
     if complete:
         statusComplete.write(
-            '<h2><center> Status: Complete </center></h2>\n<center>' + date.strftime("%b %d, %y %H:%m%p MST") + '</center>\n\n' + statusContents)
+            '<h2><center> Status: Complete </center></h2>\n<center>' + date.strftime("%b %d, %y. %H:%m MST") + '</center>\n\n' + statusContents)
         print('\tTesting Complete: Results = Pass', flush=True)
         sys.exit()
     else:
