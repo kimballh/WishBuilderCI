@@ -48,7 +48,7 @@ class SqliteDao:
         c = self.__con.cursor()
         c.execute('insert into PullRequests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                   (pr.pr, pr.branch, pr.date, pr.e_date, pr.feature_variables, pr.meta_variables, pr.passed, pr.pr_id,
-                   pr.num_samples, pr.sha, pr.time_elapsed, pr.user, pr.email, pr.status, pr.report))
+                   pr.num_samples, pr.sha, pr.time_elapsed, pr.user, pr.email, pr.status, pr.report.to_json()))
         self.close()
 
     def get_pr(self, pr: int):
