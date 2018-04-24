@@ -1,5 +1,6 @@
 import requests
 from PullRequest import PullRequest
+import os
 
 REPO_URL = 'https://api.github.com/repos/srp33/WishBuilder/'
 
@@ -23,6 +24,16 @@ class GithubDao:
             pr = PullRequest(int(pr_num), branch, 'N/A', 0, 0, 0, False, int(pr_id), 0, sha, 'N/A', user, 'N/A', 'N/A')
             prs.append(pr)
         return prs
+
+    def get_files_changed(self, pr: PullRequest):
+        url = self.repo_url + 'pulls/{}/files'.format(pr.pr)
+        payload = requests.get(url).json()
+        files = []
+        download_urls = []
+        for i in range(len(payload)):
+            files.append(payload[i]['filename'])
+            download_urls.append(payload[i]['raw_url'])
+        return files, download_urls
 
     def check_files(self, pr: PullRequest):
         url = self.repo_url + 'pulls/{}/files'.format(pr.pr)
@@ -82,7 +93,13 @@ class GithubDao:
 
     @staticmethod
     def download_file(url: str, destination: str= './'):
-        local_filename = destination + url.split('/')[-1]
+        split_url = url.split('/')
+        i = split_url.index('raw')
+        local_path = destination + "/".join(split_url[i+2:-1])
+        local_filename = destination + "/".join(split_url[i+2:])
+        if not os.path.exists(local_path):
+            os.makedirs(local_path)
+        # local_filename = destination + url.split('/')[-1]
         response = requests.get(url, stream=True)
         with open(local_filename, 'wb') as fs:
             for chunk in response.iter_content(chunk_size=1024):

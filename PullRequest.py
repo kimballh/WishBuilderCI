@@ -1,6 +1,10 @@
 from Report import Report
 from datetime import datetime, timedelta
-import json
+import markdown
+import smtplib
+import mimetypes
+from email.message import EmailMessage
+from private import WISHBUILDER_EMAIL, WISHBUILDER_PASS
 
 class PullRequest:
     def __init__(self, pr: int, branch: str, date: str, e_date: float, feature_variables: int, meta_variables: int,
@@ -41,6 +45,31 @@ class PullRequest:
         out += '<h2><center> Status: {} </center></h2>\n<center>{}</center>\n\n'.format(self.status, self.date)
         out += str(self.report)
         return out
+
+    def get_report_html(self) -> str:
+        md = self.get_report_markdown()
+        html = markdown.markdown(md)
+        return html
+
+    def send_report(self, recipient: str='user'):
+        if recipient == 'user':
+            recipient = self.email
+        s = smtplib.SMTP(host='mail.kimball-hill.com', port=587)
+        s.starttls()
+        s.login(WISHBUILDER_EMAIL, WISHBUILDER_PASS)
+
+        if self.passed:
+            subject = "Passed: {}".format(self.branch)
+        else:
+            subject = "Failed: {}".format(self.branch)
+
+        message = EmailMessage()
+        message['From'] = 'wishbuilder@kimball-hill.com'
+        message['To'] = recipient
+        message['Subject'] = subject
+        message.set_content(self.get_report_html(), subtype='html')
+
+        s.send_message(message)
 
     def check_if_passed(self) -> bool:
         passed = True
