@@ -17,17 +17,11 @@ RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
 
 ENV PATH /opt/conda/bin:$PATH
 
-RUN apt-get install -y curl grep sed zip unzip
-RUN apt-get install -y python
-RUN apt-get install -y python3-pip
-RUN apt-get install -y sudo
-RUN apt-get install -y python3-yaml
+RUN apt-get install -y curl grep sed zip unzip python python3-pip sudo python3-yaml
 RUN pip3 install requests
 RUN pip install fastnumbers
 RUN pip3 install h5py
 RUN pip3 install pandas
 RUN conda install -y numpy=1.13.0 hdf5=1.10.1 xlrd=1.1.0 r-essentials=1.5.2
-
-
 
 CMD ["./wishbuilder.sh"]
