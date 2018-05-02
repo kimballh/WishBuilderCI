@@ -542,16 +542,28 @@ def test_cleanup(original_directory, pr: PullRequest):
 
 
 def geney_convert(pr, simple=False, targz=False):
-
     print('Converting dataset to Geney format...', flush=True)
-    source_directory = '{}/CompleteDataSets/{}'.format(WB_DIRECTORY, pr.branch)
-    output_directory = '{}/GeneyDataSets/{}'.format(WB_DIRECTORY, pr.branch)
+
+    # Make directories
+    branch_location = '{}{}'.format(TESTING_LOCATION, pr.branch)
+    raw_location = '{}{}'.format(RAW_DATA_STORAGE, pr.branch)
+    geney_location = '{}{}'.format(GENEY_DATA_LOCATION, pr.branch)
+    if not os.path.exists(raw_location):
+        os.mkdir(raw_location)
+    if not os.path.exists(geney_location):
+        os.mkdir(geney_location)
+
+    # move raw files (data.tsv.gz & metadata.tsv.gz)
+    os.system('mv {}/{} {}/'.format(branch_location, TEST_DATA_NAME, raw_location))
+    os.system('mv {}/{} {}/'.format(branch_location, TEST_META_DATA_NAME, raw_location))
+    os.system('chmod -R 0755 ' + raw_location)
+
+    # convert and output to geney dataset location
     if simple:
-        os.system('python3 /app/GeneyTypeConverter/type_converter.py -s {} {}'.format(source_directory,
-                                                                                      output_directory))
+        os.system('python3 {} -s {} {}'.format(GENEY_CONVERTER, raw_location, geney_location))
     else:
-        os.system('python3 /app/GeneyTypeConverter/type_converter.py {} {}'.format(source_directory, output_directory))
-    os.system('chmod 777 ' + output_directory)
+        os.system('python3 {} {} {}'.format(GENEY_CONVERTER, raw_location, geney_location))
+    os.system('chmod -R 0755 ' + geney_location)
     if targz:
-        os.system('tar -czf {0}.tar.gz {0}'.format(output_directory))
-        os.system('chmod 777 {}.tar.gz'.format(output_directory))
+        os.system('tar -czf {0}.tar.gz {0}'.format(geney_location))
+        os.system('chmod 755 {}.tar.gz'.format(geney_location))

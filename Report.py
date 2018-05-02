@@ -2,8 +2,8 @@ import json
 
 
 class Report:
-    def __init__(self, reportJson: str=None):
-        if not reportJson:
+    def __init__(self, report_json: str=None):
+        if not report_json:
             # Valid File Test
             self.valid_files = False
             self.valid_files_report = ''
@@ -49,7 +49,7 @@ class Report:
             self.cleanup_report = '1'
 
         else:
-            report_dict = json.loads(reportJson)
+            report_dict = json.loads(report_json)
 
             # Valid File Test
             self.valid_files = report_dict['valid_files']
@@ -89,11 +89,11 @@ class Report:
 
             # Sample Comparison Test
             self.pass_sample_comparison = report_dict['pass_sample_comparison']
-            self.sample_comparison_report = report_dict['sample_comparison_results']
+            self.sample_comparison_report = report_dict['sample_comparison_report']
 
             # Cleanup Test
             self.pass_cleanup = report_dict['pass_cleanup']
-            self.cleanup_report = report_dict['cleanup_results']
+            self.cleanup_report = report_dict['cleanup_report']
 
         self.other = False
         self.other_content = ''

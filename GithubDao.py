@@ -1,8 +1,8 @@
 import requests
 from PullRequest import PullRequest
 import os
+from Constants import REPO_URL
 
-REPO_URL = 'https://api.github.com/repos/srp33/WishBuilder/'
 
 class GithubDao:
     def __init__(self, repo_url: str, token: str):

@@ -4,9 +4,18 @@ from SqliteDao import SqliteDao
 from private import GH_TOKEN
 import shutil
 import time
+from threading import Thread
 
 sql_dao = SqliteDao(SQLITE_FILE)
 git_dao = GithubDao('https://api.github.com/repos/srp33/WishBuilder/', GH_TOKEN)
+
+
+class TestThread(Thread):
+    def run(self):
+        super().run()
+
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
+        super().__init__(group, target, name, args, kwargs, daemon=daemon)
 
 
 def check_history():
@@ -22,6 +31,19 @@ def check_history():
     return None
 
 
+def get_new_prs():
+    history = sql_dao.get_all()
+    prs = git_dao.get_prs()
+    new_prs = []
+    for pr in prs:
+        if pr.pr in history.keys():
+            if pr.sha not in history[pr.pr] and not sql_dao.in_progress(pr):
+                new_prs.append(pr)
+        else:
+            new_prs.append(pr)
+    return new_prs
+
+
 def test(pr: PullRequest):
     start = time.time()
     if pr.branch not in os.listdir(TESTING_LOCATION):
@@ -30,7 +52,7 @@ def test(pr: PullRequest):
         raise EnvironmentError("Directory {}{} Already Exists".format(TESTING_LOCATION, pr.branch))
     pr.status = 'In progress'
     pr.email = git_dao.get_email(pr.sha)
-    # sql_dao.update(pr)
+    sql_dao.update(pr)
     files, download_urls = git_dao.get_files_changed(pr)
     valid, description_only = check_files_changed(pr, files)
 
@@ -69,9 +91,10 @@ def test(pr: PullRequest):
     pr.time_elapsed = time.strftime("%Hh:%Mm:%Ss", time.gmtime(time.time() - start))
     pr.date = time.strftime("%D", time.gmtime(time.time()))
     pr.e_date = time.time()
-    if pr.check_if_passed():
-        print("All test passed")
-        # geney_convert(pr)
+    pr.check_if_passed()
+    sql_dao.update(pr)
+    if pr.passed:
+        geney_convert(pr)
     cleanup(pr)
 
 
@@ -82,12 +105,17 @@ def cleanup(pr):
 
 
 if __name__ == '__main__':
-    # new_pr = check_history()
-    # while new_pr:
-    #     test(new_pr)
-    #     new_pr = check_history()
-    pull = PullRequest(351, 'TCGA_BreastCancer_DNAMethylation', '', 0, 1, 1, False, 1, 0,
-                       '18172c2dcfaa81fa5ef116ed86fbfd04a067f863', '', '', '', '')
-    test(pull)
-    print(pull)
-    print(pull.get_report_markdown())
+    new_pr = check_history()
+    while new_pr:
+        test(new_pr)
+        new_pr = check_history()
+
+    # num_threads = 0
+    # new_prs = get_new_prs()
+    # if len(new_prs) > 1:
+	#
+    # pull = PullRequest(351, 'TCGA_BreastCancer_DNAMethylation', '', 0, 1, 1, False, 1, 0,
+    #                    '18172c2dcfaa81fa5ef116ed86fbfd04a067f863', '', '', '', '')
+    # test(pull)
+    # print(pull)
+    # print(pull.get_report_markdown())

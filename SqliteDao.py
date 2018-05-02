@@ -1,8 +1,7 @@
 import sqlite3
 import json
 from PullRequest import PullRequest
-
-SQLITE_FILE = './history.sql'
+from Constants import SQLITE_FILE
 
 
 class SqliteDao:
@@ -35,7 +34,7 @@ class SqliteDao:
 
     def insert_pr(self, pr: int, branch: str, date: str, e_date: float, feature_variables: int, meta_variables: int,
                   passed: bool, pr_id: int, num_samples: int, sha: str, time_elapsed: str, user: str, email: str,
-                  status: str, report: str):
+                  status: str, report: str=None):
         self.open()
         c = self.__con.cursor()
         c.execute('insert into PullRequests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -51,18 +50,21 @@ class SqliteDao:
                    pr.num_samples, pr.sha, pr.time_elapsed, pr.user, pr.email, pr.status, pr.report.to_json()))
         self.close()
 
-    def get_pr(self, pr: int):
+    def get_pr(self, pr_number: int) -> [PullRequest]:
         self.open()
         c = self.__con.cursor()
-        c.execute('select * from PullRequests where PR={PR}'.format(PR=pr))
-        data = c.fetchone()
+        c.execute('select * from PullRequests where PR={}'.format(pr_number))
+        # data = c.fetchone()
+        data = c.fetchall()
         self.close()
+        prs = []
         if data:
-            pr = PullRequest(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9],
-                             data[10], data[11], data[12], data[13], data[14])
-            return pr
-        else:
-            return None
+            for result in data:
+                pr = PullRequest(result[0], result[1], result[2], result[3], result[4], result[5], result[6],
+                                 result[7], result[8], result[9], result[10], result[11], result[12], result[13],
+                                 result[14])
+                prs.append(pr)
+        return prs
 
     def import_json(self, file: str, recreate=False):
         import uuid
@@ -109,7 +111,7 @@ class SqliteDao:
                     sha = str(uuid.uuid4())
 
                 self.insert_pr(pr, branch, date, e_date, feature_variables, meta_variables, passed, pr_id, num_samples,
-                               sha, time_elapsed, user, email, status, '')
+                               sha, time_elapsed, user, email, status)
 
     def get_all(self):
         prs = {}
@@ -143,4 +145,7 @@ class SqliteDao:
 
 if __name__ == '__main__':
     dao = SqliteDao(SQLITE_FILE)
-    dao.import_json('./prHistory.json', True)
+    # dao.import_json('../prHistory.json', True)
+    pull = dao.get_pr(351)[0]
+    print(pull)
+    # pull.send_report(recipient='hillkimball@gmail.com')

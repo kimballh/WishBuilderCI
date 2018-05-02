@@ -1,6 +1,10 @@
-SQLITE_FILE = './prHistory.sql'
+REPO_URL = 'https://api.github.com/repos/srp33/WishBuilder/'
+SQLITE_FILE = './history.sql'
 WB_DIRECTORY = '/app'
-TESTING_LOCATION = '/Volumes/KIMBALLUSB/Testing/'
+TESTING_LOCATION = '/Volumes/KimballSSD/Testing/'
+RAW_DATA_STORAGE = TESTING_LOCATION + 'RawDatasets/'
+GENEY_DATA_LOCATION = TESTING_LOCATION + 'GeneyDatasets/'
+GENEY_CONVERTER = TESTING_LOCATION + 'GeneyTypeConverter/typeconverter.py'
 MIN_TEST_CASES = 8
 MIN_FEATURES = 2
 MIN_SAMPLES = 2

@@ -2,9 +2,9 @@ from Report import Report
 from datetime import datetime, timedelta
 import markdown
 import smtplib
-import mimetypes
 from email.message import EmailMessage
 from private import WISHBUILDER_EMAIL, WISHBUILDER_PASS
+
 
 class PullRequest:
     def __init__(self, pr: int, branch: str, date: str, e_date: float, feature_variables: int, meta_variables: int,
