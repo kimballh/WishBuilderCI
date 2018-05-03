@@ -1,7 +1,8 @@
+MAX_NUM_PROCESSES = 4
 REPO_URL = 'https://api.github.com/repos/srp33/WishBuilder/'
 SQLITE_FILE = './history.sql'
 WB_DIRECTORY = '/app'
-TESTING_LOCATION = '/Volumes/KimballSSD/Testing/'
+TESTING_LOCATION = '/Analysis/GeneyWishBuilder/WishBuilder2/'
 RAW_DATA_STORAGE = TESTING_LOCATION + 'RawDatasets/'
 GENEY_DATA_LOCATION = TESTING_LOCATION + 'GeneyDatasets/'
 GENEY_CONVERTER = TESTING_LOCATION + 'GeneyTypeConverter/typeconverter.py'

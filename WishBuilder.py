@@ -4,18 +4,10 @@ from SqliteDao import SqliteDao
 from private import GH_TOKEN
 import shutil
 import time
-from threading import Thread
+from multiprocessing import Pool, Queue, Process
 
 sql_dao = SqliteDao(SQLITE_FILE)
 git_dao = GithubDao('https://api.github.com/repos/srp33/WishBuilder/', GH_TOKEN)
-
-
-class TestThread(Thread):
-    def run(self):
-        super().run()
-
-    def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None):
-        super().__init__(group, target, name, args, kwargs, daemon=daemon)
 
 
 def check_history():
@@ -37,7 +29,7 @@ def get_new_prs():
     new_prs = []
     for pr in prs:
         if pr.pr in history.keys():
-            if pr.sha not in history[pr.pr] and not sql_dao.in_progress(pr):
+            if pr.sha not in history[pr.pr]:
                 new_prs.append(pr)
         else:
             new_prs.append(pr)
@@ -104,18 +96,43 @@ def cleanup(pr):
     print("Done!")
 
 
-if __name__ == '__main__':
-    new_pr = check_history()
-    while new_pr:
-        test(new_pr)
-        new_pr = check_history()
+def wait(job):
+    print("Finished {}".format(job), flush=True)
+    time.sleep(5)
 
-    # num_threads = 0
-    # new_prs = get_new_prs()
-    # if len(new_prs) > 1:
-	#
-    # pull = PullRequest(351, 'TCGA_BreastCancer_DNAMethylation', '', 0, 1, 1, False, 1, 0,
-    #                    '18172c2dcfaa81fa5ef116ed86fbfd04a067f863', '', '', '', '')
-    # test(pull)
-    # print(pull)
-    # print(pull.get_report_markdown())
+
+def simulate_test(pr: PullRequest):
+    print("Starting job: {}".format(pr.branch), flush=True)
+    time.sleep(20)
+    print("testing {}...".format(pr.branch), flush=True)
+    time.sleep(20)
+    print("finished {}".format(pr.branch), flush=True)
+
+
+def queue_pr(pr: PullRequest, local_history: []):
+    if pr.sha not in local_history:
+        queue.append(pr)
+
+
+if __name__ == '__main__':
+    processes = []
+    queue = []
+    history = []
+    while True:
+        print("Check for prs", flush=True)
+        new_prs = get_new_prs()
+        for pull in new_prs:
+            queue_pr(pull, history)
+        while len(queue) > 0:
+            for p in processes:
+                if not p.is_alive():
+                    processes.remove(p)
+            if len(processes) < MAX_NUM_PROCESSES:
+                new_pr = queue.pop()
+                history.append(new_pr.sha)
+                p = Process(target=test, args=(new_pr,))
+                processes.append(p)
+                p.start()
+            time.sleep(5)
+        time.sleep(600)
+
