@@ -1,7 +1,7 @@
 MAX_NUM_PROCESSES = 4
 REPO_URL = 'https://api.github.com/repos/srp33/WishBuilder/'
-SQLITE_FILE = './history.sql'
 WB_DIRECTORY = '/app/'
+SQLITE_FILE = WB_DIRECTORY + 'history.sql'
 TESTING_LOCATION = WB_DIRECTORY + 'WishBuilderCI/testing/'
 RAW_DATA_STORAGE = WB_DIRECTORY + 'RawDatasets/'
 GENEY_DATA_LOCATION = WB_DIRECTORY + 'GeneyDatasets/'
