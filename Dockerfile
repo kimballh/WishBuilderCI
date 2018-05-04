@@ -24,4 +24,4 @@ RUN pip3 install h5py
 RUN pip3 install pandas
 RUN conda install -y numpy=1.13.0 hdf5=1.10.1 xlrd=1.1.0 r-essentials=1.5.2 markdown
 
-CMD ["./wishbuilder.sh"]
+CMD ["python3 /app/WishBuilderCI/Wishbuilder.py"]

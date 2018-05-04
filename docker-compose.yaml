@@ -1,0 +1,7 @@
+version: '2'
+
+services:
+  wb-container:
+    image: "kimballer/wishbuilderci"
+    volumes:
+      - "${WB_PATH}:/app"
