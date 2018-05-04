@@ -5,9 +5,9 @@ from Constants import SQLITE_FILE
 
 
 class SqliteDao:
-    def __init__(self, directory):
-        self.__con = sqlite3.connect(directory)
-        self.__directory = directory
+    def __init__(self, db_file):
+        self.__con = sqlite3.connect(db_file)
+        self.__file = db_file
         self.close()
 
     def __enter__(self):
@@ -21,7 +21,7 @@ class SqliteDao:
         self.__con.close()
 
     def open(self):
-        self.__con = sqlite3.connect(self.__directory)
+        self.__con = sqlite3.connect(self.__file)
 
     def create_db(self):
         self.open()
@@ -37,9 +37,12 @@ class SqliteDao:
                   status: str, report: str=None):
         self.open()
         c = self.__con.cursor()
-        c.execute('insert into PullRequests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                  (pr, branch, date, e_date, feature_variables, meta_variables, passed, pr_id, num_samples, sha,
-                   time_elapsed, user, email, status, report))
+        try:
+            c.execute('insert into PullRequests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                      (pr, branch, date, e_date, feature_variables, meta_variables, passed, pr_id, num_samples, sha,
+                       time_elapsed, user, email, status, report))
+        except sqlite3.IntegrityError:
+            print("Pull #{}, \'{}\' does not have a unique sha ({})".format(pr, branch, sha))
         self.close()
 
     def add_pr(self, pr: PullRequest):
@@ -50,11 +53,39 @@ class SqliteDao:
                    pr.num_samples, pr.sha, pr.time_elapsed, pr.user, pr.email, pr.status, pr.report.to_json()))
         self.close()
 
-    def get_pr(self, pr_number: int) -> [PullRequest]:
+    def get_prs(self, pr_number: int) -> [PullRequest]:
         self.open()
         c = self.__con.cursor()
         c.execute('select * from PullRequests where PR={}'.format(pr_number))
-        # data = c.fetchone()
+        data = c.fetchall()
+        self.close()
+        prs = []
+        if data:
+            for result in data:
+                pr = PullRequest(result[0], result[1], result[2], result[3], result[4], result[5], result[6],
+                                 result[7], result[8], result[9], result[10], result[11], result[12], result[13],
+                                 result[14])
+                prs.append(pr)
+        return prs
+
+    def get_pr(self, pr_sha: str) -> PullRequest:
+        self.open()
+        c = self.__con.cursor()
+        c.execute('select * from PullRequests where sha={}'.format(pr_sha))
+        result = c.fetchone()
+        self.close()
+        if result:
+            pr = PullRequest(result[0], result[1], result[2], result[3], result[4], result[5], result[6],
+                             result[7], result[8], result[9], result[10], result[11], result[12], result[13],
+                             result[14])
+        else:
+            pr = None
+        return pr
+
+    def get_prs_from_statement(self, sql_stmt: str) -> [PullRequest]:
+        self.open()
+        c = self.__con.cursor()
+        c.execute(sql_stmt)
         data = c.fetchall()
         self.close()
         prs = []
@@ -113,15 +144,29 @@ class SqliteDao:
                 self.insert_pr(pr, branch, date, e_date, feature_variables, meta_variables, passed, pr_id, num_samples,
                                sha, time_elapsed, user, email, status)
 
-    def get_all(self):
-        prs = {}
+    def get_all(self, return_objects=False):
         self.open()
         c = self.__con.cursor()
-        c.execute('select PR, sha from PullRequests')
+        if not return_objects:
+            c.execute('select PR, sha from PullRequests')
+        else:
+            c.execute('select * from PullRequests')
         data = c.fetchall()
         self.close()
-        for i in range(len(data)):
-            prs.setdefault(data[i][0], []).append(data[i][1])
+        if data:
+            if not return_objects:
+                prs = {}
+                for i in range(len(data)):
+                    prs.setdefault(data[i][0], []).append(data[i][1])
+            else:
+                prs = []
+                for result in data:
+                    pr = PullRequest(result[0], result[1], result[2], result[3], result[4], result[5], result[6],
+                                     result[7], result[8], result[9], result[10], result[11], result[12], result[13],
+                                     result[14])
+                    prs.append(pr)
+        else:
+            prs = None
         return prs
 
     def in_progress(self, pr: PullRequest) -> bool:
@@ -130,10 +175,10 @@ class SqliteDao:
         c.execute('select status from PullRequests where sha=\"{}\"'.format(pr.sha))
         data = c.fetchone()
         self.close()
-        if 'progress' in data[0] or 'Progress' in data[0]:
-            return True
-        else:
-            return False
+        if data:
+            if 'progress' in data[0] or 'Progress' in data[0]:
+                return True
+        return False
 
     def update(self, pr: PullRequest):
         self.open()

@@ -46,8 +46,12 @@ class Report:
 
             # Cleanup Test
             self.pass_cleanup = False
-            self.cleanup_report = '1'
+            self.cleanup_report = ''
 
+            # Other (updates and strings of previous status report, if this is true, only the other_content will be
+            # used when cast to a string
+            self.other = False
+            self.other_content = ''
         else:
             report_dict = json.loads(report_json)
 
@@ -95,8 +99,13 @@ class Report:
             self.pass_cleanup = report_dict['pass_cleanup']
             self.cleanup_report = report_dict['cleanup_report']
 
-        self.other = False
-        self.other_content = ''
+            # Other
+            if 'other' in report_dict.keys():
+                self.other = report_dict['other']
+                self.other_content = 'other_content'
+            else:
+                self.other = False
+                self.other_content = ''
 
     def __str__(self) -> str:
         if self.other:

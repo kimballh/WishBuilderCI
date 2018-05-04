@@ -1,11 +1,11 @@
 MAX_NUM_PROCESSES = 4
 REPO_URL = 'https://api.github.com/repos/srp33/WishBuilder/'
 SQLITE_FILE = './history.sql'
-WB_DIRECTORY = '/app'
-TESTING_LOCATION = '/app/testing/'
-RAW_DATA_STORAGE = TESTING_LOCATION + 'RawDatasets/'
-GENEY_DATA_LOCATION = TESTING_LOCATION + 'GeneyDatasets/'
-GENEY_CONVERTER = TESTING_LOCATION + 'GeneyTypeConverter/typeconverter.py'
+WB_DIRECTORY = '/app/'
+TESTING_LOCATION = WB_DIRECTORY + 'WishBuilderCI/testing/'
+RAW_DATA_STORAGE = WB_DIRECTORY + 'RawDatasets/'
+GENEY_DATA_LOCATION = WB_DIRECTORY + 'GeneyDatasets/'
+GENEY_CONVERTER = WB_DIRECTORY + 'GeneyTypeConverter/typeconverter.py'
 MIN_TEST_CASES = 8
 MIN_FEATURES = 2
 MIN_SAMPLES = 2
