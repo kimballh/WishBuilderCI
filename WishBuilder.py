@@ -121,7 +121,7 @@ if __name__ == '__main__':
             if len(processes) < MAX_NUM_PROCESSES:
                 new_pr = queue.pop()
                 history.append(new_pr.sha)
-                p = Process(target=simulate_test, args=(new_pr,))
+                p = Process(target=test, args=(new_pr,))
                 processes.append(p)
                 p.start()
             time.sleep(5)
