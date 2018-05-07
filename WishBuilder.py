@@ -96,22 +96,12 @@ def cleanup(pr):
     print("Done!")
 
 
-def wait(job):
-    print("Finished {}".format(job), flush=True)
-    time.sleep(5)
-
-
 def simulate_test(pr: PullRequest):
     print("Starting job: {}".format(pr.branch), flush=True)
     time.sleep(20)
     print("testing {}...".format(pr.branch), flush=True)
     time.sleep(20)
     print("finished {}".format(pr.branch), flush=True)
-
-
-def queue_pr(pr: PullRequest, local_history: []):
-    if pr.sha not in local_history:
-        queue.append(pr)
 
 
 if __name__ == '__main__':
@@ -122,7 +112,8 @@ if __name__ == '__main__':
         print("Check for prs", flush=True)
         new_prs = get_new_prs()
         for pull in new_prs:
-            queue_pr(pull, history)
+            if pull.sha not in history:
+                queue.append(pull)
         while len(queue) > 0:
             for p in processes:
                 if not p.is_alive():
@@ -135,4 +126,3 @@ if __name__ == '__main__':
                 p.start()
             time.sleep(5)
         time.sleep(600)
-
